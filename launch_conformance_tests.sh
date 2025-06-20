@@ -66,3 +66,35 @@ if ! ping -c 1 -W 2 "$BOARD_IP" >/dev/null 2>&1; then
 	echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at $BOARD_IP"
 	exit 1
 fi
+
+BOARD_USER=${BOARD_USER:-root}
+
+echo "Connecting to board as user '$BOARD_USER'"
+
+echo ""
+echo "Cleaning previous test results on board"
+ssh -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "rm -rf /tmp/conformance_tests" || {
+	echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous test results on board"
+	exit 1
+}
+
+echo ""
+echo "Copying conformance test files to board"
+scp -o StrictHostKeyChecking=no -r ./src "$BOARD_USER@$BOARD_IP:/tmp/conformance_tests" 1>/dev/null || {
+	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
+	exit 1
+}
+
+echo ""
+echo "Launching tests..."
+ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia"
+test_exit_code=$?
+
+echo ""
+echo "Cleaning up test files on board"
+ssh -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "rm -rf /tmp/conformance_tests" || {
+	echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
+	exit 1
+}
+
+exit $test_exit_code
