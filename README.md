@@ -15,6 +15,8 @@ The automatic test launcher requires the following requirements:
 * On the target:
   - Board with a connexion to the network
   - SSH access to the board
+* On the host:
+  - sshpass (On ubuntu, install with `sudo apt install sshpass`)
 
 #### Launch tests
 
@@ -30,6 +32,7 @@ Required options:
 Optional options:
 
 * `--user <username>`: The username for SSH connection (default: root)
+* `--password <password>`: The password for SSH connection (default: empty)
 * `--help`: display help message
 
 ### Launch tests manually

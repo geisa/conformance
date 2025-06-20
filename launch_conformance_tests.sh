@@ -22,6 +22,7 @@ Required options:
 
 Optional options:
   --user <username>   Specify the username for SSH connection (default: root)
+  --password <password>  Specify the password for SSH connection (default: empty)
   --help              Show this help message
 EOF
 	exit 1
@@ -41,6 +42,14 @@ while [ "$#" -gt 0 ]; do
 		BOARD_USER="$2"
 		if [[ -z "$BOARD_USER" ]]; then
 			echo -e "${RED}Error:${ENDCOLOR} Username cannot be empty"
+			usage
+		fi
+		shift 2
+		;;
+		--password)
+		BOARD_PASSWORD="$2"
+		if [[ -z "$BOARD_PASSWORD" ]]; then
+			echo -e "${RED}Error:${ENDCOLOR} Password cannot be empty"
 			usage
 		fi
 		shift 2
@@ -73,26 +82,26 @@ echo "Connecting to board as user '$BOARD_USER'"
 
 echo ""
 echo "Cleaning previous test results on board"
-ssh -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "rm -rf /tmp/conformance_tests" || {
+sshpass -p "$BOARD_PASSWORD" ssh -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "rm -rf /tmp/conformance_tests" || {
 	echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous test results on board"
 	exit 1
 }
 
 echo ""
 echo "Copying conformance test files to board"
-scp -o StrictHostKeyChecking=no -r ./src "$BOARD_USER@$BOARD_IP:/tmp/conformance_tests" 1>/dev/null || {
+sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no -r ./src "$BOARD_USER@$BOARD_IP:/tmp/conformance_tests" 1>/dev/null || {
 	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
 	exit 1
 }
 
 echo ""
 echo "Launching tests..."
-ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia"
+sshpass -p "$BOARD_PASSWORD" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia"
 test_exit_code=$?
 
 echo ""
 echo "Cleaning up test files on board"
-ssh -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "rm -rf /tmp/conformance_tests" || {
+sshpass -p "$BOARD_PASSWORD" ssh -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "rm -rf /tmp/conformance_tests" || {
 	echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
 	exit 1
 }
