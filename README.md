@@ -9,6 +9,15 @@ with [GEISA specifications](https://github.com/geisa/specification)
 
 ### Launch tests automatically
 
+#### Requirements
+
+The automatic test launcher requires the following requirements:
+* On the target:
+  - Board with a connexion to the network
+  - SSH access to the board
+
+#### Launch tests
+
 A script is provided to launch all tests automatically. This script will execute
 the tests and create a report.
 
