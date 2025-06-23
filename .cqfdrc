@@ -1,0 +1,6 @@
+[project]
+org='geisa'
+name='tests'
+
+[build]
+command='shellcheck -o all launch_conformance_tests.sh'
