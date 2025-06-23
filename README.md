@@ -17,6 +17,9 @@ The automatic test launcher requires the following requirements:
   - SSH access to the board
 * On the host:
   - sshpass (On ubuntu, install with `sudo apt install sshpass`)
+  - python3 (On ubuntu, install with `sudo apt install python3`)
+  - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
+  - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
 
 #### Launch tests
 
