@@ -111,7 +111,7 @@ sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD
 }
 # shellcheck disable=SC2015
 cd "${TOPDIR}"/src/test-report-pdf && \
-./compile.py -i "${TOPDIR}"/reports/ && \
+./compile.py -i "${TOPDIR}"/reports/ -p 'GEISA conformance tests' -d "${TOPDIR}"/src/pdf_themes && \
 mv "${TOPDIR}"/src/test-report-pdf/test-report.pdf "${TOPDIR}"/reports/geisa-conformance-report.pdf || {
 	echo -e "${RED}Error:${ENDCOLOR} Failed to create PDF report"
 	exit 1
