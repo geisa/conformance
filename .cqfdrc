@@ -4,3 +4,5 @@ name='tests'
 
 [build]
 command='shellcheck -o all launch_conformance_tests.sh'
+
+docker_run_args='--network=host'

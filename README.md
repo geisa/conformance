@@ -21,6 +21,9 @@ The automatic test launcher requires the following requirements:
   - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
   - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
 
+A docker support is also available to launch the tests with a container, it requires:
+  - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
+
 #### Launch tests
 
 A script is provided to launch all tests automatically. This script will execute
@@ -39,6 +42,11 @@ Optional options:
 * `--help`: display help message
 
 A xml and pdf report will be generated in the `reports` directory.
+To use the docker support run with the following commands:
+```bash
+$ cqfd init
+$ cqfd run ./launch_conformance_tests.sh --ip <board_ip> [options]
+```
 
 ### Launch tests manually
 
