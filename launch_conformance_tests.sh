@@ -98,8 +98,25 @@ sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no -r "$TOPDIR"/src "$
 
 echo ""
 echo "Launching tests..."
-sshpass -p "$BOARD_PASSWORD" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
+sshpass -p "$BOARD_PASSWORD" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
 test_exit_code=$?
+
+
+echo ""
+echo "Copying tests report on host"
+mkdir -p "$TOPDIR"/reports
+sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "$TOPDIR"/reports 1>/dev/null || {
+	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
+	exit 1
+}
+# shellcheck disable=SC2015
+cd "${TOPDIR}"/src/test-report-pdf && \
+./compile.py -i "${TOPDIR}"/reports/ && \
+mv "${TOPDIR}"/src/test-report-pdf/test-report.pdf "${TOPDIR}"/reports/geisa-conformance-report.pdf || {
+	echo -e "${RED}Error:${ENDCOLOR} Failed to create PDF report"
+	exit 1
+}
+cd "${TOPDIR}" || exit 1
 
 echo ""
 echo "Cleaning up test files on board"

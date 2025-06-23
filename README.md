@@ -35,6 +35,8 @@ Optional options:
 * `--password <password>`: The password for SSH connection (default: empty)
 * `--help`: display help message
 
+A xml and pdf report will be generated in the `reports` directory.
+
 ### Launch tests manually
 
 //TODO
