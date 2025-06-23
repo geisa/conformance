@@ -43,3 +43,37 @@ A xml and pdf report will be generated in the `reports` directory.
 ### Launch tests manually
 
 //TODO
+
+## Testing
+
+Static test is provided to validate the code of conformance tests.
+
+### Run the test via CQFD
+
+#### Requirements
+
+Install cqfd, see [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) on github
+
+#### Run the test
+
+Run the following command to execute the static test:
+
+```bash
+$ cqfd init
+$ cqfd run
+```
+
+### Run the test manually
+
+#### Requirements
+
+The following requirements are needed to run the static test manually:
+* shellcheck (On ubuntu, install with `sudo apt install shellcheck`)
+
+#### Run the test
+
+Run the following command to execute the static test:
+
+```bash
+$ shellcheck -o all launch_conformance_tests.sh
+```
