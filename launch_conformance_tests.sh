@@ -9,6 +9,8 @@
 RED="\e[31m"
 ENDCOLOR="\e[0m"
 
+TOPDIR="$(dirname "$(readlink -f "$0")")"
+
 usage()
 {
 	cat <<EOF
@@ -89,7 +91,7 @@ sshpass -p "$BOARD_PASSWORD" ssh -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD
 
 echo ""
 echo "Copying conformance test files to board"
-sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no -r ./src "$BOARD_USER@$BOARD_IP:/tmp/conformance_tests" 1>/dev/null || {
+sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no -r "$TOPDIR"/src "$BOARD_USER@$BOARD_IP:/tmp/conformance_tests" 1>/dev/null || {
 	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
 	exit 1
 }
