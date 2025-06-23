@@ -96,7 +96,7 @@ sshpass -p "$BOARD_PASSWORD" scp -o StrictHostKeyChecking=no -r ./src "$BOARD_US
 
 echo ""
 echo "Launching tests..."
-sshpass -p "$BOARD_PASSWORD" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia"
+sshpass -p "$BOARD_PASSWORD" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "$BOARD_USER@$BOARD_IP" "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
 test_exit_code=$?
 
 echo ""
