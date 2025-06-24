@@ -99,6 +99,15 @@ $ cqfd run "cd src/test-report-pdf && ./compile.py -i . -p 'GEISA conformance te
 
 This will generate a PDF report in the test-report-pdf directory named `test-report.pdf`.
 
+
+## Configuration file
+
+A configuration file is provided to set some test checks as the specification are not yet finalized.
+The configuration file is located in `src/cukinia-tests/tests_configuration.conf`.
+
+Here are the available configuration options:
+* CONFIGURATION_FILE: Used to test the proper functioning of the configuration file.
+
 ## Installation
 
 Download the repository and run the following command to download the
