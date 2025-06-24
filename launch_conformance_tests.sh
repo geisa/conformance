@@ -117,6 +117,8 @@ if ! ${NO_REPORTS}; then
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
 		exit 1
 	}
+	echo ""
+	echo "Generating PDF report"
 	# shellcheck disable=SC2015
 	cd "${TOPDIR}"/src/test-report-pdf && \
 	./compile.py -i "${TOPDIR}"/reports/ -p 'GEISA conformance tests' -d "${TOPDIR}"/src/pdf_themes && \
