@@ -39,6 +39,7 @@ Optional options:
 
 * `--user <username>`: The username for SSH connection (default: root)
 * `--password <password>`: The password for SSH connection (default: empty)
+* `--no-reports` : Do not generate test reports (only run tests and display results)
 * `--help`: display help message
 
 A xml and pdf report will be generated in the `reports` directory.

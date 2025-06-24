@@ -11,6 +11,7 @@ ENDCOLOR="\e[0m"
 
 ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
+NO_REPORTS=false
 
 usage()
 {
@@ -26,6 +27,7 @@ Required options:
 Optional options:
   --user <username>   Specify the username for SSH connection (default: root)
   --password <password>  Specify the password for SSH connection (default: empty)
+  --no-reports        Do not generate test reports (only run tests and display results)
   --help              Show this help message
 EOF
 	exit 1
@@ -57,6 +59,10 @@ while [[ "$#" -gt 0 ]]; do
 		fi
 		shift 2
 		;;
+		--no-reports)
+		NO_REPORTS=true
+		shift
+		;;
 		--help)
 		usage
 		;;
@@ -73,7 +79,7 @@ if [[ -z ${BOARD_IP} ]]; then
 fi
 
 echo ""
-echo "Starting GEISA Conformance Tests on board at ${BOARD_IP}"
+echo "Starting GEISA Conformance Tests on board at ${BOARD_IP} ${NO_REPORTS+without reports}"
 if ! ping -c 1 -W 2 "${BOARD_IP}" >/dev/null 2>&1; then
 	echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${BOARD_IP}"
 	exit 1
@@ -97,27 +103,34 @@ sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no -r "${TOPDIR}"/sr
 	exit 1
 }
 
-echo ""
-echo "Launching tests..."
-sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
-test_exit_code=$?
+if ! ${NO_REPORTS}; then
+	echo ""
+	echo "Launching tests..."
+	sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
+	test_exit_code=$?
 
 
-echo ""
-echo "Copying tests report on host"
-mkdir -p "${TOPDIR}"/reports
-sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "${TOPDIR}"/reports 1>/dev/null || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
-	exit 1
-}
-# shellcheck disable=SC2015
-cd "${TOPDIR}"/src/test-report-pdf && \
-./compile.py -i "${TOPDIR}"/reports/ -p 'GEISA conformance tests' -d "${TOPDIR}"/src/pdf_themes && \
-mv "${TOPDIR}"/src/test-report-pdf/test-report.pdf "${TOPDIR}"/reports/geisa-conformance-report.pdf || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to create PDF report"
-	exit 1
-}
-cd "${TOPDIR}" || exit 1
+	echo ""
+	echo "Copying tests report on host"
+	mkdir -p "${TOPDIR}"/reports
+	sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "${TOPDIR}"/reports 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
+		exit 1
+	}
+	# shellcheck disable=SC2015
+	cd "${TOPDIR}"/src/test-report-pdf && \
+	./compile.py -i "${TOPDIR}"/reports/ -p 'GEISA conformance tests' -d "${TOPDIR}"/src/pdf_themes && \
+	mv "${TOPDIR}"/src/test-report-pdf/test-report.pdf "${TOPDIR}"/reports/geisa-conformance-report.pdf || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to create PDF report"
+		exit 1
+	}
+	cd "${TOPDIR}" || exit 1
+else
+	echo ""
+	echo "Launching tests..."
+	sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
+	test_exit_code=$?
+fi
 
 echo ""
 echo "Cleaning up test files on board"
