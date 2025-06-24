@@ -1,0 +1,35 @@
+# Copyright (C) 2025 Southern California Edison.
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI Conformance
+
+on: [push, pull_request]
+
+env:
+    IMX93_TARGET_IP: ${{ secrets.IMX93_TARGET_IP }}
+
+jobs:
+    shellcheck:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+            - name: Run static test
+              uses: ludeeus/action-shellcheck@2.0.0
+              env:
+                  SHELLCHECK_OPTS: -o all
+    on-target-tests-imx93:
+        runs-on: [self-hosted, runner-sfl-geisa-imx93]
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                submodules: true
+            - name: Run on target tests
+              run: |
+                cqfd init
+                cqfd run ./launch_conformance_tests.sh --ip ${IMX93_TARGET_IP}
+            - name: Upload results
+              uses: actions/upload-artifact@v4
+              with:
+                  path: reports/geisa-conformance-report.pdf
