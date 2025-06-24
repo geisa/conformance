@@ -52,6 +52,15 @@ $ cqfd run ./launch_conformance_tests.sh --ip <board_ip> [options]
 
 //TODO
 
+## Installation
+
+Download the repository and run the following command to download the
+dependencies:
+
+```bash
+$ git submodule update --init --recursive
+```
+
 ## Testing
 
 Static test is provided to validate the code of conformance tests.
