@@ -1,0 +1,47 @@
+# Copyright (C) 2025 Southern California Edison.
+
+extends: default
+title_page:
+  background_color: transparent
+  align: center
+  logo:
+    image: image:lfe_geisa.svg[width=70%, align=center]
+  title:
+    top: 30%
+    font_style: bold
+    font_color: #02283f
+    line_height: 0.9
+    text-transform: uppercase
+  authors:
+    margin-top: 40
+    content:
+      with_email: |
+          Receiver: GEISA +
+          Contact: https://slack.lfenergy.org/ (#geisa)
+    font-color: #181818
+code:
+  font_color: #333333
+  font_style: normal
+  font_size: 10
+  background_color: #f6f6f6
+  border_color: #56b0c9
+  border_radius: 2
+base:
+  font_color: #000000
+table:
+  align: center
+  border_color: #000000
+  font-size: 8
+  head:
+    font-size: 10
+    background-color: #56b0c9
+footer:
+  height: 0.75in
+  verso: &shared_footer
+    center:
+      content: Copyright © {year} Southern California Edison
+  recto: *shared_footer
+  title:
+      center:
+        content: |
+            Copyright © {year} Southern California Edison
