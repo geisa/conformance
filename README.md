@@ -148,5 +148,5 @@ The following requirements are needed to run the static test manually:
 Run the following command to execute the static test:
 
 ```bash
-$ shellcheck -o all launch_conformance_tests.sh
+$ shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
 ```

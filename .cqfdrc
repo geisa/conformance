@@ -3,6 +3,6 @@ org='geisa'
 name='tests'
 
 [build]
-command='shellcheck -o all launch_conformance_tests.sh'
+command='shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh'
 
 docker_run_args='--network=host'

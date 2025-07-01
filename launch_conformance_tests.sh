@@ -13,6 +13,8 @@ ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
 
+source "${TOPDIR}"/src/launch_conformance_tests_ssh.sh
+
 usage()
 {
 	cat <<EOF
@@ -78,46 +80,19 @@ if [[ -z ${BOARD_IP} ]]; then
 	usage
 fi
 
-echo ""
-echo "Starting GEISA Conformance Tests on board at ${BOARD_IP} ${NO_REPORTS+without reports}"
-if ! ping -c 1 -W 2 "${BOARD_IP}" >/dev/null 2>&1; then
-	echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${BOARD_IP}"
-	exit 1
+if [[ -n ${BOARD_IP} ]]; then
+	BOARD_USER=${BOARD_USER:-root}
+
+	connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+	if ! ${NO_REPORTS}; then
+		launch_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+	else
+		launch_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+	fi
+	cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 fi
 
-BOARD_USER=${BOARD_USER:-root}
-
-echo "Connecting to board as user '${BOARD_USER}'"
-
-echo ""
-echo "Cleaning previous test results on board"
-sshpass -p "${BOARD_PASSWORD}" ssh -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "rm -rf /tmp/conformance_tests" || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous test results on board"
-	exit 1
-}
-
-echo ""
-echo "Copying conformance test files to board"
-sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no -r "${TOPDIR}"/src "${BOARD_USER}@${BOARD_IP}:/tmp/conformance_tests" 1>/dev/null || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
-	exit 1
-}
-
 if ! ${NO_REPORTS}; then
-	echo ""
-	echo "Launching tests..."
-	sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
-	test_exit_code=$?
-
-
-	echo ""
-	echo "Copying tests report on host"
-	mkdir -p "${TOPDIR}"/reports
-	sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "${TOPDIR}"/reports 1>/dev/null || {
-		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
-		exit 1
-	}
-	echo ""
 	echo "Generating PDF report"
 	# shellcheck disable=SC2015
 	cd "${TOPDIR}"/src/test-report-pdf && \
@@ -127,18 +102,6 @@ if ! ${NO_REPORTS}; then
 		exit 1
 	}
 	cd "${TOPDIR}" || exit 1
-else
-	echo ""
-	echo "Launching tests..."
-	sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
-	test_exit_code=$?
 fi
-
-echo ""
-echo "Cleaning up test files on board"
-sshpass -p "${BOARD_PASSWORD}" ssh -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "rm -rf /tmp/conformance_tests" || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
-	exit 1
-}
 
 exit "${test_exit_code}"
