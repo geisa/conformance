@@ -4,5 +4,6 @@ name='tests'
 
 [build]
 command='shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh'
+user_extra_groups='dialout'
 
 docker_run_args='--network=host'
