@@ -7,9 +7,11 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN set -x \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
+        black \
         iputils-ping \
         lrzsz \
         openssh-server \
+        pylint \
         python3 \
         python3-pip \
         python3-junitparser \
