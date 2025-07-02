@@ -86,7 +86,7 @@ def get_cukinia_report(args, ser):
     """
     print("Copying tests report on host\n")
     send_command(
-        "cd /tmp/conformance_tests/cukinia-tests/ && sz geisa-conformance-report.xml --zmodem",
+        "cd /tmp/conformance_tests/cukinia-tests/ && sz -v geisa-conformance-report.xml --zmodem",
         ser,
     )
     try:
@@ -101,6 +101,11 @@ def get_cukinia_report(args, ser):
     except subprocess.CalledProcessError as e:
         print(f"Error receiving report file via ZMODEM: {e}")
         sys.exit(-1)
+
+    while True:
+        sz_output = ser.readline()
+        if "Transfer complete" in sz_output.decode("utf-8"):
+            break
 
 
 def launch_cukinia_tests(args, ser):
