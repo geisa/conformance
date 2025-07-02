@@ -89,7 +89,7 @@ def get_cukinia_report(args, p):
     """
     print("Copying tests report on host\n")
     p.sendline(
-        "cd /tmp/conformance_tests/cukinia-tests/ && sz -v geisa-conformance-report.xml --zmodem",
+        "cd /tmp/conformance_tests/cukinia-tests/ && sz -vy geisa-conformance-report.xml --zmodem",
     )
     try:
         with open(args.serial, "rb") as ser_in, open(args.serial, "wb") as ser_out:
@@ -100,6 +100,7 @@ def get_cukinia_report(args, p):
                 cwd=f"{TOPDIR}/reports",
                 check=True,
             )
+        p.sendline("echo 'Transfer complete'")
         p.expect(r"Transfer complete")
     except subprocess.CalledProcessError as e:
         print(f"Error receiving report file via ZMODEM: {e}")
