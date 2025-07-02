@@ -25,6 +25,7 @@ The automatic test launcher requires the following requirements:
   * With serial:
      - python3 (On ubuntu, install with `sudo apt install python3`)
      - pyserial (On ubuntu, install with `sudo apt install python3-serial`)
+     - pexpect (On ubuntu, install with `sudo apt install python3-pexpect`)
      - lrzsz (On ubuntu, install with `sudo apt install lrzsz`)
   * For report generation:
     - python3 (On ubuntu, install with `sudo apt install python3`)
@@ -47,10 +48,14 @@ Required options:
 or
 * `--serial <serial_port>`: Serial port of the board to test
 
+:Warning: When using serial, do not use another tool to access the serial port
+while running the tests, as it may interfere with the tests and cause unexpected
+results.
+
 Optional options:
 
-* `--user <username>`: The username for SSH connection (default: root)
-* `--password <password>`: The password for SSH connection (default: empty)
+* `--user <username>`: The username for SSH and serial connection (default: root)
+* `--password <password>`: The password for SSH and serial connection (default: empty)
 * `--no-reports` : Do not generate test reports (only run tests and display results)
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
 * `--help`: display help message

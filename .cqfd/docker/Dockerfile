@@ -16,6 +16,7 @@ RUN set -x \
         python3-pip \
         python3-junitparser \
         python3-serial \
+        python3-pexpect \
         ruby-asciidoctor-pdf \
         shellcheck \
         sshpass \

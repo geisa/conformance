@@ -117,6 +117,8 @@ if [[ -n ${BOARD_IP} ]]; then
 else
 	echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
 	args=(--serial "${BOARD_SERIAL}" \
+		--user "${BOARD_USER:-root}" \
+		--password "${BOARD_PASSWORD:-}" \
 		--baudrate "${BAUDRATE:-115200}")
 	if ${NO_REPORTS}; then
 		args+=(--no-reports)

@@ -13,6 +13,8 @@ import subprocess
 import sys
 import tarfile
 import time
+import pexpect
+import pexpect.fdpexpect
 import serial
 
 TOPDIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -174,6 +176,16 @@ def parse_arguments():
         default="115200",
     )
     parser.add_argument(
+        "--user",
+        help="Specify the username for SSH connection (default: root)",
+        default="root",
+    )
+    parser.add_argument(
+        "--password",
+        help="Specify the password for SSH connection (default: empty)",
+        default="",
+    )
+    parser.add_argument(
         "--no-reports",
         action="store_true",
         help="Do not generate test reports (only run tests and display results)",
@@ -181,6 +193,34 @@ def parse_arguments():
     )
     args = parser.parse_args()
     return args
+
+
+def detect_board_state(p, args):
+    """
+    Detect the board state by sending a command and checking the response.
+    """
+
+    try:
+        print("Detecting board state...\n")
+        p.sendline("\n")
+        i = p.expect([r"(\S*)@\S*:.+(#|\$)", r"login:"])
+        if i == 1:
+            p.sendline(args.user)
+            i = p.expect([r"Password:", r"(\S*)@\S*:.+(#|\$)"])
+            if i == 0:
+                if not args.password:
+                    print("Error: Password is required for login.")
+                    sys.exit(-1)
+                p.sendline(args.password)
+                i = p.expect([r"(\S*)@\S*:.+(#|\$)", r"Login incorrect"])
+                if i == 1:
+                    print("Error: Failed to login, check your credentials.")
+                    sys.exit(-1)
+
+        print("Login successful\n")
+
+    except pexpect.exceptions.TIMEOUT:
+        print("Warning: enable to detect board state, continuing anyway\n")
 
 
 def main():
@@ -195,6 +235,9 @@ def main():
     try:
         with serial.Serial(args.serial, args.baudrate, timeout=1) as ser:
             fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            p = pexpect.fdpexpect.fdspawn(ser, timeout=5)
+
+            detect_board_state(p, args)
 
             print("Cleaning previous test results on board\n")
             cleanup(ser)
@@ -213,6 +256,12 @@ def main():
         sys.exit(-1)
     except BlockingIOError:
         print(f"Serial port {args.serial} is already in use!")
+        sys.exit(-1)
+    except pexpect.EOF:
+        print(
+            "Error: Unexpected end of file from serial port. Verify "
+            "that the serial port is not already in use.\n"
+        )
         sys.exit(-1)
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"An unexpected error occurred: {e}\n")
