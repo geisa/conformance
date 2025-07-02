@@ -108,6 +108,28 @@ def get_cukinia_report(args, ser):
             break
 
 
+def print_cukinia_output(ser):
+    """
+    Print the output of the Cukinia tests from the board.
+    """
+    ser.readline()
+    while True:
+        cukinia_output = ser.readline()
+        print(cukinia_output.decode("utf-8").strip())
+        if "GEISA conformance tests" in cukinia_output.decode("utf-8"):
+            break
+
+
+def get_cukinia_return_code(ser):
+    """
+    Get the return code of the Cukinia tests from the board.
+    """
+    send_command("echo $?", ser)
+    ser.readline()
+    test_exit_code = ser.readline().decode("utf-8").strip()
+    return int(test_exit_code)
+
+
 def launch_cukinia_tests(args, ser):
     """
     Launch Cukinia tests on the board.
@@ -119,14 +141,8 @@ def launch_cukinia_tests(args, ser):
             "/tmp/conformance_tests/cukinia-tests/cukinia.conf",
             ser,
         )
-        while True:
-            ser_bytes = ser.readline()
-            print(ser_bytes.decode("utf-8").strip())
-            if ser_bytes == b"":
-                break
-        send_command("echo $?", ser)
-        ser.readline()
-        test_exit_code = ser.readline().decode("utf-8").strip()
+        print_cukinia_output(ser)
+        test_exit_code = get_cukinia_return_code(ser)
     else:
         send_command(
             "/tmp/conformance_tests/cukinia/cukinia -f junitxml "
@@ -134,9 +150,7 @@ def launch_cukinia_tests(args, ser):
             "/tmp/conformance_tests/cukinia-tests/cukinia.conf",
             ser,
         )
-        send_command("echo $?", ser)
-        ser.readline()
-        test_exit_code = ser.readline().decode("utf-8").strip()
+        test_exit_code = get_cukinia_return_code(ser)
         get_cukinia_report(args, ser)
 
     return int(test_exit_code)
@@ -199,6 +213,9 @@ def main():
         sys.exit(-1)
     except BlockingIOError:
         print(f"Serial port {args.serial} is already in use!")
+        sys.exit(-1)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"An unexpected error occurred: {e}\n")
         sys.exit(-1)
 
     sys.exit(test_exit_code)
