@@ -7,11 +7,14 @@
 # version 2.0. See LICENSE for details.
 
 RED="\e[31m"
+ORANGE="\e[33m"
 ENDCOLOR="\e[0m"
 
 ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
+
+source "${TOPDIR}"/src/launch_conformance_tests_ssh.sh
 
 usage()
 {
@@ -19,15 +22,18 @@ usage()
 
 GEISA Conformance Launch script
 
-Usage: $0 --ip <board_ip> [options]
+Usage: $0 [options]
 
 Required options:
   --ip <board_ip>     Specify the IP address of the board to run tests on
+or
+  --serial <serial_port>  Specify the serial port of the board to run tests on
 
 Optional options:
   --user <username>   Specify the username for SSH connection (default: root)
   --password <password>  Specify the password for SSH connection (default: empty)
   --no-reports        Do not generate test reports (only run tests and display results)
+  --baudrate <baudrate> Specify the baudrate for the serial port of the board (default: 115200)
   --help              Show this help message
 EOF
 	exit 1
@@ -39,6 +45,14 @@ while [[ "$#" -gt 0 ]]; do
 		BOARD_IP="$2"
 		if [[ -z "${BOARD_IP}" ]]; then
 			echo -e "${RED}Error:${ENDCOLOR} IP address cannot be empty"
+			usage
+		fi
+		shift 2
+		;;
+		--serial)
+		BOARD_SERIAL="$2"
+		if [[ -z "${BOARD_SERIAL}" ]]; then
+			echo -e "${RED}Error:${ENDCOLOR} Serial port cannot be empty"
 			usage
 		fi
 		shift 2
@@ -63,6 +77,14 @@ while [[ "$#" -gt 0 ]]; do
 		NO_REPORTS=true
 		shift
 		;;
+		--baudrate)
+		BAUDRATE="$2"
+		if [[ -z "${BAUDRATE}" ]]; then
+			echo -e "${RED}Error:${ENDCOLOR} Baudrate cannot be empty"
+			usage
+		fi
+		shift 2
+		;;
 		--help)
 		usage
 		;;
@@ -73,51 +95,44 @@ while [[ "$#" -gt 0 ]]; do
 	esac
 done
 
-if [[ -z ${BOARD_IP} ]]; then
-	echo -e "${RED}Error:${ENDCOLOR} Board IP address is required."
+if [[ -z ${BOARD_IP} && -z ${BOARD_SERIAL} ]]; then
+	echo -e "${RED}Error:${ENDCOLOR} Board IP address or serial port is required."
 	usage
 fi
 
-echo ""
-echo "Starting GEISA Conformance Tests on board at ${BOARD_IP} ${NO_REPORTS+without reports}"
-if ! ping -c 1 -W 2 "${BOARD_IP}" >/dev/null 2>&1; then
-	echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${BOARD_IP}"
-	exit 1
+if [[ -n ${BOARD_IP} && -n ${BOARD_SERIAL} ]]; then
+	echo -e "${ORANGE}Warning:${ENDCOLOR} Board IP address and serial port specified, launching test with ssh connection."
 fi
 
-BOARD_USER=${BOARD_USER:-root}
+if [[ -n ${BOARD_IP} ]]; then
+	BOARD_USER=${BOARD_USER:-root}
 
-echo "Connecting to board as user '${BOARD_USER}'"
+	connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+	if ! ${NO_REPORTS}; then
+		launch_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+	else
+		launch_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+	fi
+	cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+else
+	echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
+	args=(--serial "${BOARD_SERIAL}" \
+		--user "${BOARD_USER:-root}" \
+		--password "${BOARD_PASSWORD:-}" \
+		--baudrate "${BAUDRATE:-115200}")
+	if ${NO_REPORTS}; then
+		args+=(--no-reports)
+	fi
+	python3 "${TOPDIR}"/src/launch_conformance_tests_serial.py "${args[@]}"
+	test_exit_code=$?
+	if [[ ${test_exit_code} -eq 255 ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} Failed to launch tests on board via serial port"
+		exit "${test_exit_code}"
+	fi
 
-echo ""
-echo "Cleaning previous test results on board"
-sshpass -p "${BOARD_PASSWORD}" ssh -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "rm -rf /tmp/conformance_tests" || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous test results on board"
-	exit 1
-}
-
-echo ""
-echo "Copying conformance test files to board"
-sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no -r "${TOPDIR}"/src "${BOARD_USER}@${BOARD_IP}:/tmp/conformance_tests" 1>/dev/null || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
-	exit 1
-}
+fi
 
 if ! ${NO_REPORTS}; then
-	echo ""
-	echo "Launching tests..."
-	sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
-	test_exit_code=$?
-
-
-	echo ""
-	echo "Copying tests report on host"
-	mkdir -p "${TOPDIR}"/reports
-	sshpass -p "${BOARD_PASSWORD}" scp -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "${TOPDIR}"/reports 1>/dev/null || {
-		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
-		exit 1
-	}
-	echo ""
 	echo "Generating PDF report"
 	# shellcheck disable=SC2015
 	cd "${TOPDIR}"/src/test-report-pdf && \
@@ -127,18 +142,6 @@ if ! ${NO_REPORTS}; then
 		exit 1
 	}
 	cd "${TOPDIR}" || exit 1
-else
-	echo ""
-	echo "Launching tests..."
-	sshpass -p "${BOARD_PASSWORD}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
-	test_exit_code=$?
 fi
-
-echo ""
-echo "Cleaning up test files on board"
-sshpass -p "${BOARD_PASSWORD}" ssh -o StrictHostKeyChecking=no "${BOARD_USER}@${BOARD_IP}" "rm -rf /tmp/conformance_tests" || {
-	echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
-	exit 1
-}
 
 exit "${test_exit_code}"
