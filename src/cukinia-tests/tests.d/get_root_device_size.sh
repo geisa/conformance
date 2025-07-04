@@ -14,3 +14,4 @@ if [ "${ROOT_DEVICE_MAJOR}" -eq 0 ]; then
 	fi
 	ROOT_DEVICE_MAJOR=$(mountpoint -x "${ROOT_DEVICE}" | awk '{ split($1, x, ":"); print x[1] }')
 fi
+DEVICE_SIZE=$(awk '$1 == '${ROOT_DEVICE_MAJOR}' && $2 == "0" { print $3 }' /proc/partitions)
