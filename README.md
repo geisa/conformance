@@ -13,13 +13,24 @@ with [GEISA specifications](https://github.com/geisa/specification)
 
 The automatic test launcher requires the following requirements:
 * On the target:
-  - Board with a connexion to the network
-  - SSH access to the board
+  * With ssh:
+     - Board with a connexion to the network
+     - SSH access to the board
+  * With serial:
+     - Serial connection to the board
+     - lrzsz package
 * On the host:
-  - sshpass (On ubuntu, install with `sudo apt install sshpass`)
-  - python3 (On ubuntu, install with `sudo apt install python3`)
-  - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
-  - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
+  * With ssh:
+     - sshpass (On ubuntu, install with `sudo apt install sshpass`)
+  * With serial:
+     - python3 (On ubuntu, install with `sudo apt install python3`)
+     - pyserial (On ubuntu, install with `sudo apt install python3-serial`)
+     - pexpect (On ubuntu, install with `sudo apt install python3-pexpect`)
+     - lrzsz (On ubuntu, install with `sudo apt install lrzsz`)
+  * For report generation:
+    - python3 (On ubuntu, install with `sudo apt install python3`)
+    - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
+    - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
 
 A docker support is also available to launch the tests with a container, it requires:
   - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
@@ -29,17 +40,24 @@ A docker support is also available to launch the tests with a container, it requ
 A script is provided to launch all tests automatically. This script will execute
 the tests and create a report.
 
-``./launch_conformance_tests.sh --ip <board_ip> [options]``
+``./launch_conformance_tests.sh [options]``
 
 Required options:
 
 * `--ip <board_ip>`: IP address of the board to test
+or
+* `--serial <serial_port>`: Serial port of the board to test
+
+:Warning: When using serial, do not use another tool to access the serial port
+while running the tests, as it may interfere with the tests and cause unexpected
+results.
 
 Optional options:
 
-* `--user <username>`: The username for SSH connection (default: root)
-* `--password <password>`: The password for SSH connection (default: empty)
+* `--user <username>`: The username for SSH and serial connection (default: root)
+* `--password <password>`: The password for SSH and serial connection (default: empty)
 * `--no-reports` : Do not generate test reports (only run tests and display results)
+* `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
 * `--help`: display help message
 
 A xml and pdf report will be generated in the `reports` directory.
@@ -48,6 +66,8 @@ To use the docker support run with the following commands:
 ```bash
 $ cqfd init
 $ cqfd run ./launch_conformance_tests.sh --ip <board_ip> [options]
+or
+$ cqfd run ./launch_conformance_tests.sh --serial <serial_port> [options]
 ```
 
 ### Launch tests manually
@@ -142,11 +162,15 @@ $ cqfd run
 
 The following requirements are needed to run the static test manually:
 * shellcheck (On ubuntu, install with `sudo apt install shellcheck`)
+* pylint (On ubuntu, install with `sudo apt install pylint`)
+* black (On ubuntu, install with `sudo apt install black`)
 
 #### Run the test
 
 Run the following command to execute the static test:
 
 ```bash
-$ shellcheck -o all launch_conformance_tests.sh
+$ shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
+$ pylint src/launch_conformance_tests_serial.py
+$ black --check --diff src/launch_conformance_tests_serial.py
 ```
