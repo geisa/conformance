@@ -1,0 +1,17 @@
+# Copyright (C) 2025 Southern California Edison.
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI Conformance
+
+on: [push]
+
+jobs:
+    shellcheck:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+            - name: Run static test
+              uses: ludeeus/action-shellcheck@2.0.0
+              env:
+                  SHELLCHECK_OPTS: -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
