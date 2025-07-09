@@ -206,3 +206,31 @@ $ shellcheck -xo all launch_conformance_tests.sh src/*.sh
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
 ```
+
+## CI
+
+The CI is configured to run static tests (shellcheck, pylint, black) and on
+target tests on each push.
+
+If you want to add a new target in the CI, add your runner in github settings
+with a label corresponding to the target and modify
+.github/workflows/ci-conformance.yml:
+
+* To add ssh tests add the following code snippet in the `jobs` section:
+```
+on-target-tests-ssh-<target_name>:
+    uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
+    with:
+        runner: <target_name>
+    secrets:
+        target_ip: ${{ secrets.<target_ip_secret> }}
+        target_password: ${{ secrets.<target_ip_password> }}
+    needs: [shellcheck, pylint, black]
+```
+with :
+* `<target_name>` being the name of your target (corresponding to the label
+you configured).
+* `<target_ip_secret>` being the name of the secret containing the IP address
+of your target.
+* `<target_ip_password>` being the name of the secret containing the password
+of your target. (optional, if not provided, no password will be used for the SSH connection)
