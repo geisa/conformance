@@ -15,3 +15,11 @@ jobs:
               uses: ludeeus/action-shellcheck@2.0.0
               env:
                   SHELLCHECK_OPTS: -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
+    on-target-tests-ssh-imx93:
+        uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
+        with:
+            runner: imx93
+        secrets:
+            target_ip: ${{ secrets.IMX93_TARGET_IP }}
+            target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
+        needs: shellcheck
