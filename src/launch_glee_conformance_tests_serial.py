@@ -96,6 +96,7 @@ def get_cukinia_report(args, p):
         "&& sz -vy geisa-lee-conformance-report.xml --zmodem",
     )
     try:
+        os.makedirs(f"{TOPDIR}/reports", exist_ok=True)
         with open(args.serial, "rb") as ser_in, open(args.serial, "wb") as ser_out:
             subprocess.run(
                 ["rz", "-y", "--zmodem"],
