@@ -1,0 +1,60 @@
+# Copyright (C) 2025 Southern California Edison.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Reusable workflow for serial testing
+
+on:
+  workflow_call:
+    inputs:
+        runner:
+          required: true
+          type: string
+        target_tty:
+          required: true
+          type: string
+        target_baudrate:
+          required: false
+          type: string
+          default: '115200'
+        user:
+          required: false
+          type: string
+          default: 'root'
+    secrets:
+        target_password:
+          required: false
+
+jobs:
+    on-target-test-serial:
+        runs-on: ${{inputs.runner}}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                submodules: true
+            - name: Run on target tests with report generation using serial
+              run: |
+                cqfd init
+                CQFD_EXTRA_RUN_ARGS="-v ${{inputs.target_tty}}:${{inputs.target_tty}}" \
+                cqfd run ./launch_conformance_tests.sh \
+                    --serial ${{inputs.target_tty}} \
+                    --baudrate ${{inputs.target_baudrate}} \
+                    --user ${{inputs.user}} \
+                    ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }}
+            - name: Upload results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: geisa-conformance-report-serial-${{inputs.runner}}
+                  path: reports/geisa-conformance-report.pdf
+                  if-no-files-found: error
+            - name: Run on target tests without report generation using serial
+              run: |
+                cqfd init
+                CQFD_EXTRA_RUN_ARGS="-v ${{inputs.target_tty}}:${{inputs.target_tty}}" \
+                cqfd run ./launch_conformance_tests.sh \
+                    --serial ${{inputs.target_tty}} \
+                    --baudrate ${{inputs.target_baudrate}} \
+                    --user ${{inputs.user}} \
+                    ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
+                    --no-reports
