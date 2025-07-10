@@ -55,3 +55,11 @@ jobs:
             target_ip: ${{ secrets.IMX93_TARGET_IP }}
             target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
         needs: [shellcheck, pylint, black]
+    on-target-tests-serial-imx93:
+        uses: ./.github/workflows/ci-conformance-on-target-serial.yml
+        with:
+            runner: imx93
+            target_tty: /dev/ttyGEISA_imx93
+        secrets:
+            target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
+        needs: [shellcheck, pylint, black, on-target-tests-ssh-imx93]

@@ -236,3 +236,25 @@ you configured).
 of your target.
 * `<target_ip_password>` being the name of the secret containing the password
 of your target. (optional, if not provided, no password will be used for the SSH connection)
+
+* To add serial tests add the following code snippet in the `jobs` section:
+```
+on-target-tests-serial-<target_name>:
+    uses: ./.github/workflows/ci-conformance-on-target-serial.yml
+    with:
+        runner: <target_name>
+        user: <target_user>
+        target_tty: <target_tty>
+        target_baudrate: <target_baudrate>
+    secrets:
+        target_password: ${{ secrets.<target_ip_password> }}
+    needs: [shellcheck, pylint, black, on-target-tests-ssh-<target_name>]
+```
+with :
+* `<target_name>` being the name of your target (corresponding to the label
+you configured).
+* `<target_user>` being the user to connect to the target (optional, default: root).
+* `<target_tty>` being the serial port of your target (e.g. /dev/ttyUSB0).
+* `<target_baudrate>` being the baudrate of your target (optional, default: 115200)
+* `<target_ip_password>` being the name of the secret containing the password
+of your target. (optional, if not provided, no password will be used for the serial connection)
