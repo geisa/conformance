@@ -222,6 +222,7 @@ on-target-tests-ssh-<target_name>:
     uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
     with:
         runner: <target_name>
+        user: <target_user>
     secrets:
         target_ip: ${{ secrets.<target_ip_secret> }}
         target_password: ${{ secrets.<target_ip_password> }}
@@ -230,6 +231,7 @@ on-target-tests-ssh-<target_name>:
 with :
 * `<target_name>` being the name of your target (corresponding to the label
 you configured).
+* `<target_user>` being the user to connect to the target (optional, default: root).
 * `<target_ip_secret>` being the name of the secret containing the IP address
 of your target.
 * `<target_ip_password>` being the name of the secret containing the password
