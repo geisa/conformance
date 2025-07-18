@@ -14,7 +14,7 @@ SSH() {
 }
 
 SCP() {
-	sshpass -p "${board_password}" scp -o StrictHostKeyChecking=no "$@"
+	sshpass -p "${board_password}" scp -O -o StrictHostKeyChecking=no "$@"
 }
 
 connect_and_transfer_with_ssh() {
