@@ -82,6 +82,43 @@ launch_tests_without_report_ssh() {
 	export test_exit_code
 }
 
+launch_bandwidth_test_with_report_ssh() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+	local topdir="$4"
+
+	echo ""
+	echo "Launching bandwidth test..."
+	(sleep 5; iperf3 -c "${board_ip}" --logfile /tmp/iperf.log) &
+	SSH "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report-bandwidth.xml /tmp/conformance_tests/cukinia-tests/connectivity_tests_bandwidth.conf"
+	bandwidth_test_exit_code=$?
+
+	echo ""
+	echo "Copying bandwidth test report on host"
+	mkdir -p "${topdir}"/reports
+	SCP "${board_user}@${board_ip}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report-bandwidth.xml" "${topdir}"/reports 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to copy bandwidth test report from board"
+		exit 1
+	}
+
+	export bandwidth_test_exit_code
+}
+
+launch_bandwidth_test_without_report_ssh() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+
+	echo ""
+	echo "Launching bandwidth test..."
+	(sleep 5; iperf3 -c "${board_ip}" --logfile /tmp/iperf.log) &
+	SSH "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/connectivity_tests_bandwidth.conf"
+	bandwidth_test_exit_code=$?
+
+	export bandwidth_test_exit_code
+}
+
 cleanup_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
