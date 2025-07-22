@@ -97,7 +97,7 @@ launch_bandwidth_test_with_report_ssh() {
 	echo ""
 	echo "Copying bandwidth test report on host"
 	mkdir -p "${topdir}"/reports
-	SCP "${board_user}@${board_ip}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report-bandwidth.xml" "${topdir}"/reports 1>/dev/null || {
+	SCP "${board_user}@[${board_ip}]:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report-bandwidth.xml" "${topdir}"/reports 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy bandwidth test report from board"
 		exit 1
 	}
