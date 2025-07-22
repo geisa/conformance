@@ -16,12 +16,14 @@ The automatic test launcher requires the following requirements:
   * With ssh:
      - Board with a connexion to the network
      - SSH access to the board
+     - iperf3 for the bandwidth test
   * With serial:
      - Serial connection to the board
      - lrzsz package
 * On the host:
   * With ssh:
      - sshpass (On ubuntu, install with `sudo apt install sshpass`)
+     - iperf3 for the bandwidth test (On ubuntu, install with `sudo apt install iperf3`)
   * With serial:
      - python3 (On ubuntu, install with `sudo apt install python3`)
      - pyserial (On ubuntu, install with `sudo apt install python3-serial`)
@@ -70,6 +72,8 @@ or
 $ cqfd run ./launch_conformance_tests.sh --serial <serial_port> [options]
 ```
 
+Launching the tests with the ip option, will run the bandwidth test.
+
 ### Launch tests manually
 
 #### Requirements
@@ -81,6 +85,9 @@ The manual launch is requiring some dependencies to generate the report on the h
 
 A docker support is also available to generate the report on the host, it requires:
 * cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
+
+For the tests to run, you need to have the following requirements on the target:
+- iperf3 for the bandwidth test (iperf3 should also be installed on the host)
 
 #### Launch tests
 
@@ -98,9 +105,23 @@ If you only want to run the tests without generating the report, you can run the
 $ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf
 ```
 
+A special case is done for the bandwidth test, as it requires a server to run the test. You can run the following command to launch the tests and generate the report:
+```bash
+$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report-bandwidth.xml /tmp/conformance_tests/cukinia-tests/connectivity_tests_bandwidth.conf
+```
+or without the report generation:
+```bash
+$ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/connectivity_tests_bandwidth.conf
+```
+
+Then on your host you can run the iperf3 client:
+```bash
+$ iperf3 -c <board_ip>
+```
+
 #### Generate report
 
-To generate the PDF report, transfer the xml report on your host in test-report-pdf folder (/path/to/conformance/src/test-report-pdf) and generate it with the following commands:
+To generate the PDF report, transfer the xml report (and the bandwidth report if generated) on your host in test-report-pdf folder (/path/to/conformance/src/test-report-pdf) and generate it with the following commands:
 
 ```bash
 cd /path/to/conformance/src/test-report-pdf
