@@ -171,7 +171,7 @@ The following requirements are needed to run the static test manually:
 Run the following command to execute the static test:
 
 ```bash
-$ shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
+$ shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh src/cukinia-tests/tests.d/*.sh
 $ pylint src/launch_conformance_tests_serial.py
 $ black --check --diff src/launch_conformance_tests_serial.py
 ```
