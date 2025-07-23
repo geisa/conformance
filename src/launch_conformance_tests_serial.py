@@ -7,6 +7,7 @@ version 2.0. See LICENSE for details.
 """
 
 import argparse
+from datetime import datetime
 import fcntl
 import os
 import subprocess
@@ -143,9 +144,12 @@ def launch_cukinia_tests(p, args):
     Launch Cukinia tests on the board.
     If --no-reports is specified, only run tests and display results without generating reports.
     """
+    # Get host date for NTP test
+    current_date_utc = datetime.now().strftime("%Y-%m-%d_%H:%M")
     try:
         if args.no_reports:
             p.sendline(
+                f"CURRENT_DATE_UTC={current_date_utc} "
                 "/tmp/conformance_tests/cukinia/cukinia "
                 "/tmp/conformance_tests/cukinia-tests/cukinia.conf"
             )
@@ -154,6 +158,7 @@ def launch_cukinia_tests(p, args):
             test_exit_code = get_cukinia_return_code(p)
         else:
             p.sendline(
+                f"CURRENT_DATE_UTC={current_date_utc} "
                 "/tmp/conformance_tests/cukinia/cukinia -f junitxml "
                 "-o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml "
                 "/tmp/conformance_tests/cukinia-tests/cukinia.conf"
