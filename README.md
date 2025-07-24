@@ -95,27 +95,27 @@ For the tests to run, you need to have the following requirements on the target:
 
 #### Launch tests
 
-If you want to launch the tests manually, you can transfer the tests (src/cukinia-tests) and the orchestrator (src/cukinia) folders to /tmp/conformance_tests folder on the target.
+If you want to launch the tests manually, you can transfer the tests (src/GEISA-LEE-tests) and the orchestrator (src/cukinia) folders to /tmp/conformance_tests folder on the target.
 
 Then on the target, you can run the tests with the following command:
 
 ```bash
-$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf
+$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report.xml /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf
 ```
 This will generate a `geisa-conformance-report.xml` file in the current directory. This file will be used to generated the PDF report.
 If you only want to run the tests without generating the report, you can run the following command:
 
 ```bash
-$ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf
+$ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf
 ```
 
 A special case is done for the bandwidth test, as it requires a server to run the test. You can run the following command to launch the tests and generate the report:
 ```bash
-$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report-bandwidth.xml /tmp/conformance_tests/cukinia-tests/connectivity_tests_bandwidth.conf
+$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report-bandwidth.xml /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf
 ```
 or without the report generation:
 ```bash
-$ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/connectivity_tests_bandwidth.conf
+$ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf
 ```
 
 Then on your host you can run the iperf3 client:
@@ -148,7 +148,7 @@ This will generate a PDF report in the test-report-pdf directory named `test-rep
 ## Configuration file
 
 A configuration file is provided to set some test checks as the specification are not yet finalized.
-The configuration file is located in `src/cukinia-tests/tests_configuration.conf`.
+The configuration file is located in `src/GEISA-LEE-tests/tests_configuration.conf`.
 
 Here are the available configuration options:
 * CONFIGURATION_FILE: Used to test the proper functioning of the configuration file.

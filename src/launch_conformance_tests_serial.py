@@ -54,14 +54,16 @@ def send_and_uncompress_cukinia_files(p, args):
         send_file_via_zmodem(f"{TOPDIR}/cukinia.tar.gz", args)
         p.expect(r"(\S*)@\S*:.+(#|\$)")
         p.sendline("cd /tmp && rz -y --zmodem")
-        send_file_via_zmodem(f"{TOPDIR}/cukinia-tests.tar.gz", args)
+        send_file_via_zmodem(f"{TOPDIR}/GEISA-LEE-tests.tar.gz", args)
         p.expect(r"(\S*)@\S*:.+(#|\$)")
 
         p.sendline("mkdir -p conformance_tests")
         p.expect(r"(\S*)@\S*:.+(#|\$)")
         p.sendline("cd /tmp && tar -xzf cukinia.tar.gz -C /tmp/conformance_tests")
         p.expect(r"(\S*)@\S*:.+(#|\$)")
-        p.sendline("cd /tmp && tar -xzf cukinia-tests.tar.gz -C /tmp/conformance_tests")
+        p.sendline(
+            "cd /tmp && tar -xzf GEISA-LEE-tests.tar.gz -C /tmp/conformance_tests"
+        )
         p.expect(r"(\S*)@\S*:.+(#|\$)")
     except pexpect.exceptions.TIMEOUT:
         print("Error: Failed to copy test files to board.")
@@ -75,7 +77,7 @@ def cleanup(p):
     try:
         p.sendline(
             "cd /tmp && rm -rf /tmp/conformance_tests /tmp/cukinia.tar.gz "
-            "/tmp/cukinia-tests.tar.gz && echo 'Cleanup done'"
+            "/tmp/GEISA-LEE-tests.tar.gz && echo 'Cleanup done'"
         )
         p.expect(r"Cleanup done")
         p.expect(r"(\S*)@\S*:.+(#|\$)")
@@ -90,7 +92,8 @@ def get_cukinia_report(args, p):
     """
     print("Copying tests report on host\n")
     p.sendline(
-        "cd /tmp/conformance_tests/cukinia-tests/ && sz -vy geisa-conformance-report.xml --zmodem",
+        "cd /tmp/conformance_tests/GEISA-LEE-tests/ "
+        "&& sz -vy geisa-conformance-report.xml --zmodem",
     )
     try:
         with open(args.serial, "rb") as ser_in, open(args.serial, "wb") as ser_out:
@@ -118,14 +121,14 @@ def print_cukinia_output(p):
     cukinia_output = p.readline()
     while True:
         cukinia_output = p.readline()
-        if "--- GEISA conformance tests ---" in cukinia_output.decode("utf-8"):
+        if "--- GEISA LEE conformance tests ---" in cukinia_output.decode("utf-8"):
             break
 
     print(cukinia_output.decode("utf-8").strip())
     while True:
         cukinia_output = p.readline()
         print(cukinia_output.decode("utf-8").strip())
-        if "GEISA conformance tests" in cukinia_output.decode("utf-8"):
+        if "GEISA LEE conformance tests" in cukinia_output.decode("utf-8"):
             break
 
 
@@ -151,7 +154,7 @@ def launch_cukinia_tests(p, args):
             p.sendline(
                 f"CURRENT_DATE_UTC={current_date_utc} "
                 "/tmp/conformance_tests/cukinia/cukinia "
-                "/tmp/conformance_tests/cukinia-tests/cukinia.conf"
+                "/tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf"
             )
             print_cukinia_output(p)
             p.expect(r"(\S*)@\S*:.+(#|\$)")
@@ -160,8 +163,8 @@ def launch_cukinia_tests(p, args):
             p.sendline(
                 f"CURRENT_DATE_UTC={current_date_utc} "
                 "/tmp/conformance_tests/cukinia/cukinia -f junitxml "
-                "-o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml "
-                "/tmp/conformance_tests/cukinia-tests/cukinia.conf"
+                "-o /tmp/conformance_tests/GEISA-LEE-tests/geisa-conformance-report.xml "
+                "/tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf"
             )
             p.expect(r"(\S*)@\S*:.+(#|\$)")
             test_exit_code = get_cukinia_return_code(p)
@@ -245,7 +248,7 @@ def main():
     args = parse_arguments()
 
     compress_dir(f"{TOPDIR}/src/cukinia", "cukinia.tar.gz")
-    compress_dir(f"{TOPDIR}/src/cukinia-tests", "cukinia-tests.tar.gz")
+    compress_dir(f"{TOPDIR}/src/GEISA-LEE-tests", "GEISA-LEE-tests.tar.gz")
 
     try:
         with serial.Serial(args.serial, args.baudrate, timeout=1) as ser:
