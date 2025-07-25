@@ -129,7 +129,7 @@ To generate the PDF report, transfer the xml report (and the bandwidth report if
 
 ```bash
 cd /path/to/conformance/src/test-report-pdf
-./compile.py -i . -p 'GEISA conformance tests' -d ../pdf_themes
+./compile.py -i . -p 'GEISA conformance tests' -d ../pdf_themes -c ../GEISA-LEE-tests/GEISA-LEE-matrix.csv --allow_absent
 ```
 
 This will generate a PDF report in the current directory named `test-report.pdf`.
@@ -139,7 +139,7 @@ or you can use the docker support to generate the report on the host with the fo
 ```bash
 $ cd /path/to/conformance/
 $ cqfd init
-$ cqfd run "cd src/test-report-pdf && ./compile.py -i . -p 'GEISA conformance tests' -d ../pdf_themes"
+$ cqfd run "cd src/test-report-pdf && ./compile.py -i . -p 'GEISA conformance tests' -d ../pdf_themes -c ../GEISA-LEE-tests/GEISA-LEE-matrix.csv --allow_absent"
 ```
 
 This will generate a PDF report in the test-report-pdf directory named `test-report.pdf`.
