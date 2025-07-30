@@ -28,7 +28,7 @@ connect_and_transfer_with_ssh() {
 	local topdir="$4"
 
 	echo ""
-	echo "Starting GEISA Conformance Tests on board at ${board_ip}"
+	echo "Starting GEISA Linux Execution Environment Conformance Tests on board at ${board_ip}"
 	if ! ping -c 1 -W 2 "${board_ip}" >/dev/null 2>&1; then
 		echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${board_ip}"
 		exit 1
