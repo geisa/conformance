@@ -62,13 +62,13 @@ launch_glee_tests_with_report_ssh() {
 
 	echo ""
 	echo "Launching tests..."
-	SSH "CURRENT_DATE_UTC=${CURRENT_DATE_UTC} GLEE_TESTS=\"${GLEE_TESTS}\" /tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/GEISA-LEE-tests/geisa-conformance-report.xml /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf"
+	SSH "CURRENT_DATE_UTC=${CURRENT_DATE_UTC} GLEE_TESTS=\"${GLEE_TESTS}\" /tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/GEISA-LEE-tests/geisa-lee-conformance-report.xml /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf"
 	test_exit_code=$?
 
 	echo ""
 	echo "Copying tests report on host"
 	mkdir -p "${topdir}"/reports
-	SCP "${board_user}@[${board_ip}]:/tmp/conformance_tests/GEISA-LEE-tests/geisa-conformance-report.xml" "${topdir}"/reports 1>/dev/null || {
+	SCP "${board_user}@[${board_ip}]:/tmp/conformance_tests/GEISA-LEE-tests/geisa-lee-conformance-report.xml" "${topdir}"/reports 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
 		exit 1
 	}
@@ -104,13 +104,13 @@ launch_bandwidth_test_with_report_ssh() {
 		echo ""
 		echo "Launching bandwidth test..."
 		(sleep 5; iperf3 -c "${board_ip}" --logfile /tmp/iperf.log) &
-		SSH "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/GEISA-LEE-tests/geisa-conformance-report-bandwidth.xml /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf"
+		SSH "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/GEISA-LEE-tests/geisa-lee-conformance-report-bandwidth.xml /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf"
 		bandwidth_test_exit_code=$?
 
 		echo ""
 		echo "Copying bandwidth test report on host"
 		mkdir -p "${topdir}"/reports
-		SCP "${board_user}@[${board_ip}]:/tmp/conformance_tests/GEISA-LEE-tests/geisa-conformance-report-bandwidth.xml" "${topdir}"/reports 1>/dev/null || {
+		SCP "${board_user}@[${board_ip}]:/tmp/conformance_tests/GEISA-LEE-tests/geisa-lee-conformance-report-bandwidth.xml" "${topdir}"/reports 1>/dev/null || {
 			echo -e "${RED}Error:${ENDCOLOR} Failed to copy bandwidth test report from board"
 			exit 1
 		}

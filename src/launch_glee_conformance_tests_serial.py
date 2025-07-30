@@ -93,7 +93,7 @@ def get_cukinia_report(args, p):
     print("Copying tests report on host\n")
     p.sendline(
         "cd /tmp/conformance_tests/GEISA-LEE-tests/ "
-        "&& sz -vy geisa-conformance-report.xml --zmodem",
+        "&& sz -vy geisa-lee-conformance-report.xml --zmodem",
     )
     try:
         with open(args.serial, "rb") as ser_in, open(args.serial, "wb") as ser_out:
@@ -166,7 +166,7 @@ def launch_cukinia_tests(p, args):
                 f"CURRENT_DATE_UTC={current_date_utc} "
                 f'GLEE_TESTS="{glee_tests}" '
                 "/tmp/conformance_tests/cukinia/cukinia -f junitxml "
-                "-o /tmp/conformance_tests/GEISA-LEE-tests/geisa-conformance-report.xml "
+                "-o /tmp/conformance_tests/GEISA-LEE-tests/geisa-lee-conformance-report.xml "
                 "/tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf"
             )
             p.expect(r"(\S*)@\S*:.+(#|\$)")
