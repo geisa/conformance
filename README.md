@@ -198,7 +198,7 @@ The following requirements are needed to run the static test manually:
 Run the following command to execute the static test:
 
 ```bash
-$ shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
-$ pylint src/launch_conformance_tests_serial.py
-$ black --check --diff src/launch_conformance_tests_serial.py
+$ shellcheck -xo all launch_conformance_tests.sh src/launch_glee_conformance_tests_ssh.sh
+$ pylint src/launch_glee_conformance_tests_serial.py
+$ black --check --diff src/launch_glee_conformance_tests_serial.py
 ```
