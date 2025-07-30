@@ -15,7 +15,7 @@ TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
 bandwidth_test_exit_code=0
 
-source "${TOPDIR}"/src/launch_conformance_tests_ssh.sh
+source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh
 
 usage()
 {
@@ -115,10 +115,10 @@ if [[ -n ${BOARD_IP} ]]; then
 
 	connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 	if ! ${NO_REPORTS}; then
-		launch_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		launch_glee_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		launch_bandwidth_test_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 	else
-		launch_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+		launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 		launch_bandwidth_test_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 	fi
 	cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
@@ -131,7 +131,7 @@ else
 	if ${NO_REPORTS}; then
 		args+=(--no-reports)
 	fi
-	python3 "${TOPDIR}"/src/launch_conformance_tests_serial.py "${args[@]}"
+	python3 "${TOPDIR}"/src/launch_glee_conformance_tests_serial.py "${args[@]}"
 	test_exit_code=$?
 	if [[ ${test_exit_code} -eq 255 ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Failed to launch tests on board via serial port"

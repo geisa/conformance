@@ -1,5 +1,5 @@
 """
-GEISA Conformance Launch script for serial-based execution
+GEISA Linux Execution Environment Conformance Launch script for serial-based execution
 Copyright (C) 2025 Southern California Edison
 
 GEISA Conformance is free software, distributed under the Apache License

@@ -3,8 +3,8 @@ org='geisa'
 name='tests'
 
 [build]
-command='shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh \
-&& pylint src/launch_conformance_tests_serial.py && black --check --diff src/launch_conformance_tests_serial.py'
+command='shellcheck -xo all launch_conformance_tests.sh src/launch_glee_conformance_tests_ssh.sh \
+&& pylint src/launch_glee_conformance_tests_serial.py && black --check --diff src/launch_glee_conformance_tests_serial.py'
 user_extra_groups='dialout'
 
 docker_run_args='--network=host -e CONFORMANCE_SCP_ARGS -e CONFORMANCE_SSH_ARGS \

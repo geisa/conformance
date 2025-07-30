@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# GEISA Conformance functions for SSH-based execution
+# GEISA Linux Execution Environment Conformance functions for SSH-based execution
 # Copyright (C) 2025 Southern California Edison
 #
 # GEISA Conformance is free software, distributed under the Apache License
@@ -51,7 +51,7 @@ connect_and_transfer_with_ssh() {
 	}
 }
 
-launch_tests_with_report_ssh() {
+launch_glee_tests_with_report_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
@@ -76,7 +76,7 @@ launch_tests_with_report_ssh() {
 	export test_exit_code
 }
 
-launch_tests_without_report_ssh() {
+launch_glee_tests_without_report_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
