@@ -3,7 +3,7 @@ org='geisa'
 name='tests'
 
 [build]
-command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/tests.d/*.sh \
+command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh \
 && pylint src/launch_glee_conformance_tests_serial.py && black --check --diff src/launch_glee_conformance_tests_serial.py'
 user_extra_groups='dialout tty'
 
