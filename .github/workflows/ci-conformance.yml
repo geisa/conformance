@@ -14,7 +14,7 @@ jobs:
             - name: Run static test
               uses: ludeeus/action-shellcheck@2.0.0
               env:
-                  SHELLCHECK_OPTS: -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
+                  SHELLCHECK_OPTS: -xo all launch_conformance_tests.sh
     pylint:
         runs-on: ubuntu-latest
         steps:
@@ -30,7 +30,7 @@ jobs:
                   pip install pylint pexpect pyserial
             - name: Run pylint
               run: |
-                  pylint src/launch_conformance_tests_serial.py
+                  pylint src/launch_glee_conformance_tests_serial.py
     black:
         runs-on: ubuntu-latest
         steps:
@@ -46,7 +46,7 @@ jobs:
                   pip install black
             - name: Run black
               run: |
-                  black --check --diff src/launch_conformance_tests_serial.py
+                  black --check --diff src/launch_glee_conformance_tests_serial.py
     on-target-tests-ssh-imx93:
         uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
         with:
