@@ -6,10 +6,12 @@ EXITCODE=0
 # bits of this were adapted from check-config.sh of moby
 # see also https://github.com/moby/moby/blob/master/contrib/check-config.sh
 
+kernelVersion="$(uname -r)"
+
 possibleConfigs="
 	/proc/config.gz
-	/boot/config-$(uname -r)
-	/usr/src/linux-$(uname -r)/.config
+	/boot/config-${kernelVersion}
+	/usr/src/linux-${kernelVersion}/.config
 	/usr/src/linux/.config
 "
 
@@ -26,27 +28,24 @@ if ! command -v zgrep > /dev/null 2>&1; then
 fi
 
 useColor=true
-if [ "$NO_COLOR" = "1" ] || [ ! -t 1 ]; then
+# shellcheck disable=SC2154
+if [ "${NO_COLOR}" = "1" ] || [ ! -t 1 ]; then
 	useColor=false
 fi
-kernelVersion="$(uname -r)"
 kernelMajor="${kernelVersion%%.*}"
-kernelMinor="${kernelVersion#$kernelMajor.}"
+kernelMinor="${kernelVersion#"${kernelMajor}".}"
 kernelMinor="${kernelMinor%%.*}"
 
-is_set() {
-	zgrep "CONFIG_$1=[y|m]" "$CONFIG" > /dev/null
-}
 is_set_in_kernel() {
-	zgrep "CONFIG_$1=y" "$CONFIG" > /dev/null
+	zgrep "CONFIG_$1=y" "${CONFIG}" > /dev/null
 }
 is_set_as_module() {
-	zgrep "CONFIG_$1=m" "$CONFIG" > /dev/null
+	zgrep "CONFIG_$1=m" "${CONFIG}" > /dev/null
 }
 
 color() {
 	# if stdout is not a terminal, then don't do color codes.
-	if [ "$useColor" = "false" ]; then
+	if [ "${useColor}" = "false" ]; then
 		return 0
 	fi
 	codes=
@@ -66,26 +65,29 @@ color() {
 			magenta) code=35 ;;
 			cyan) code=36 ;;
 			white) code=37 ;;
+			*) code= ;;
 		esac
-		if [ "$code" ]; then
-			codes="${codes:+$codes;}$code"
+		if [ -n "${code}" ]; then
+			codes="${codes:+${codes};}${code}"
 		fi
 	fi
-	printf '\033[%sm' "$codes"
+	printf '\033[%sm' "${codes}"
 }
 wrap_color() {
 	text="$1"
 	shift
 	color "$@"
-	printf '%s' "$text"
+	printf '%s' "${text}"
 	color reset
 	echo
 }
 
 wrap_good() {
+	# shellcheck disable=SC2312
 	echo "$(wrap_color "$1" white): $(wrap_color "$2" green)"
 }
 wrap_bad() {
+	# shellcheck disable=SC2312
 	echo "$(wrap_color "$1" bold): $(wrap_color "$2" bold red)"
 }
 wrap_warning() {
@@ -93,6 +95,7 @@ wrap_warning() {
 }
 
 check_flag() {
+# shellcheck disable=SC2310
 	if is_set_in_kernel "$1"; then
 		wrap_good "CONFIG_$1" 'enabled'
 	elif is_set_as_module "$1"; then
@@ -106,37 +109,19 @@ check_flag() {
 check_flags() {
 	for flag in "$@"; do
 		printf -- '- '
-		check_flag "$flag"
+		check_flag "${flag}"
 	done
 }
 
-check_command() {
-	if command -v "$1" > /dev/null 2>&1; then
-		wrap_good "$1 command" 'available'
-	else
-		wrap_bad "$1 command" 'missing'
-		EXITCODE=1
-	fi
-}
-
-check_device() {
-	if [ -c "$1" ]; then
-		wrap_good "$1" 'present'
-	else
-		wrap_bad "$1" 'missing'
-		EXITCODE=1
-	fi
-}
-
-if [ ! -e "$CONFIG" ]; then
-	wrap_warning "warning: $CONFIG does not exist, searching other paths for kernel config ..."
-	for tryConfig in $possibleConfigs; do
-		if [ -e "$tryConfig" ]; then
-			CONFIG="$tryConfig"
+if [ ! -e "${CONFIG}" ]; then
+	wrap_warning "warning: ${CONFIG} does not exist, searching other paths for kernel config ..."
+	for tryConfig in ${possibleConfigs}; do
+		if [ -e "${tryConfig}" ]; then
+			CONFIG="${tryConfig}"
 			break
 		fi
 	done
-	if [ ! -e "$CONFIG" ]; then
+	if [ ! -e "${CONFIG}" ]; then
 		wrap_warning "error: cannot find kernel config"
 		wrap_warning "  try running this script again, specifying the kernel config:"
 		wrap_warning "    CONFIG=/path/to/kernel/.config $0 or $0 /path/to/kernel/.config"
@@ -144,36 +129,37 @@ if [ ! -e "$CONFIG" ]; then
 	fi
 fi
 
-wrap_color "info: reading kernel config from $CONFIG ..." white
+wrap_color "info: reading kernel config from ${CONFIG} ..." white
 echo
 
 echo 'Generally Necessary:'
 
 printf -- '- '
+#shellcheck disable=SC2312
 if [ "$(stat -f -c %t /sys/fs/cgroup 2> /dev/null)" = '63677270' ]; then
 	wrap_good 'cgroup hierarchy' 'cgroupv2'
 	cgroupv2ControllerFile='/sys/fs/cgroup/cgroup.controllers'
-	if [ -f "$cgroupv2ControllerFile" ]; then
+	if [ -f "${cgroupv2ControllerFile}" ]; then
 		echo '  Controllers:'
 		for controller in cpu cpuset io memory pids; do
-			if grep -qE '(^| )'"$controller"'($| )' "$cgroupv2ControllerFile"; then
-				echo "  - $(wrap_good "$controller" 'available')"
+			if grep -qE '(^| )'"${controller}"'($| )' "${cgroupv2ControllerFile}"; then
+				echo "  - $(wrap_good "${controller}" 'available')"
 			else
-				echo "  - $(wrap_bad "$controller" 'missing')"
+				echo "  - $(wrap_bad "${controller}" 'missing')"
 			fi
 		done
 	else
-		wrap_bad "$cgroupv2ControllerFile" 'nonexistent??'
+		wrap_bad "${cgroupv2ControllerFile}" 'nonexistent??'
 	fi
 	# TODO find an efficient way to check if cgroup.freeze exists in subdir
 else
 	cgroupSubsystemDir="$(sed -rne '/^[^ ]+ ([^ ]+) cgroup ([^ ]*,)?(cpu|cpuacct|cpuset|devices|freezer|memory)[, ].*$/ { s//\1/p; q }' /proc/mounts)"
-	cgroupDir="$(dirname "$cgroupSubsystemDir")"
-	if [ -d "$cgroupDir/cpu" ] || [ -d "$cgroupDir/cpuacct" ] || [ -d "$cgroupDir/cpuset" ] || [ -d "$cgroupDir/devices" ] || [ -d "$cgroupDir/freezer" ] || [ -d "$cgroupDir/memory" ]; then
-		echo "$(wrap_good 'cgroup hierarchy' 'properly mounted') [$cgroupDir]"
+	cgroupDir="$(dirname "${cgroupSubsystemDir}")"
+	if [ -d "${cgroupDir}/cpu" ] || [ -d "${cgroupDir}/cpuacct" ] || [ -d "${cgroupDir}/cpuset" ] || [ -d "${cgroupDir}/devices" ] || [ -d "${cgroupDir}/freezer" ] || [ -d "${cgroupDir}/memory" ]; then
+		echo "$(wrap_good 'cgroup hierarchy' 'properly mounted') [${cgroupDir}]"
 	else
-		if [ "$cgroupSubsystemDir" ]; then
-			echo "$(wrap_bad 'cgroup hierarchy' 'single mountpoint!') [$cgroupSubsystemDir]"
+		if [ -n "${cgroupSubsystemDir}" ]; then
+			echo "$(wrap_bad 'cgroup hierarchy' 'single mountpoint!') [${cgroupSubsystemDir}]"
 		else
 			wrap_bad 'cgroup hierarchy' 'nonexistent??'
 		fi
@@ -182,6 +168,7 @@ else
 	fi
 fi
 
+#shellcheck disable=SC2312
 if [ "$(cat /sys/module/apparmor/parameters/enabled 2> /dev/null)" = 'Y' ]; then
 	printf -- '- '
 	if command -v apparmor_parser > /dev/null 2>&1; then
@@ -216,22 +203,22 @@ check_flags \
 	POSIX_MQUEUE
 # (POSIX_MQUEUE is required for bind-mounting /dev/mqueue into containers)
 
-if [ "$kernelMajor" -lt 4 ] || ([ "$kernelMajor" -eq 4 ] && [ "$kernelMinor" -lt 8 ]); then
+if [ "${kernelMajor}" -lt 4 ] || { [ "${kernelMajor}" -eq 4 ] && [ "${kernelMinor}" -lt 8 ]; }; then
 	check_flags DEVPTS_MULTIPLE_INSTANCES
 fi
 
-if [ "$kernelMajor" -lt 5 ] || [ "$kernelMajor" -eq 5 -a "$kernelMinor" -le 1 ]; then
+if [ "${kernelMajor}" -lt 5 ] || { [ "${kernelMajor}" -eq 5 ] && [ "${kernelMinor}" -le 1 ]; }; then
 	check_flags NF_NAT_IPV4
 fi
 
-if [ "$kernelMajor" -lt 5 ] || [ "$kernelMajor" -eq 5 -a "$kernelMinor" -le 2 ]; then
+if [ "${kernelMajor}" -lt 5 ] || { [ "${kernelMajor}" -eq 5 ] && [ "${kernelMinor}" -le 2 ]; }; then
 	check_flags NF_NAT_NEEDED
 fi
 # check availability of BPF_CGROUP_DEVICE support
-if [ "$kernelMajor" -ge 5 ] || ([ "$kernelMajor" -eq 4 ] && [ "$kernelMinor" -ge 15 ]); then
+if [ "${kernelMajor}" -ge 5 ] || { [ "${kernelMajor}" -eq 4 ] && [ "${kernelMinor}" -ge 15 ]; }; then
 	check_flags CGROUP_BPF
 fi
 
 echo
 
-exit $EXITCODE
+exit "${EXITCODE}"
