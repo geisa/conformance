@@ -49,3 +49,12 @@ jobs:
                     --user ${{ inputs.user }} \
                     ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
                     --no-reports
+            - name: Test selecting GLEE tests to run
+              run: |
+                cqfd init
+                GLEE_TESTS="basic_hardware_tests os_requirements_tests" \
+                cqfd run ./launch_conformance_tests.sh \
+                    --ip ${{secrets.target_ip}} \
+                    --user ${{inputs.user}} \
+                    ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
+                    --no-reports
