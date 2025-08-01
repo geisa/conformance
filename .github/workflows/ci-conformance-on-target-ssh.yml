@@ -41,6 +41,13 @@ jobs:
                   name: geisa-conformance-report-ssh-${{inputs.runner}}
                   path: reports/geisa-conformance-report.pdf
                   if-no-files-found: error
+            - name: Upload tests xml
+              if: always()
+              uses: dorny/test-reporter@v2
+              with:
+                name: SSH Tests
+                path: reports/*.xml
+                reporter: jest-junit
             - name: Run on target tests without report generation using ssh
               run: |
                 cqfd init
