@@ -48,6 +48,13 @@ jobs:
                   name: geisa-conformance-report-serial-${{inputs.runner}}
                   path: reports/geisa-conformance-report.pdf
                   if-no-files-found: error
+            - name: Upload tests xml
+              if: always()
+              uses: dorny/test-reporter@v2
+              with:
+                  name: Serial Tests
+                  path: reports/*.xml
+                  reporter: jest-junit
             - name: Run on target tests without report generation using serial
               run: |
                 cqfd init
