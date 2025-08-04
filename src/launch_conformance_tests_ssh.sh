@@ -41,7 +41,7 @@ connect_and_transfer_with_ssh() {
 
 	echo ""
 	echo "Copying conformance test files to board"
-	SCP -r "${topdir}"/src "${board_user}@${board_ip}:/tmp/conformance_tests" 1>/dev/null || {
+	SCP -r "${topdir}"/src "${board_user}@[${board_ip}]:/tmp/conformance_tests" 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
 		exit 1
 	}
@@ -61,7 +61,7 @@ launch_tests_with_report_ssh() {
 	echo ""
 	echo "Copying tests report on host"
 	mkdir -p "${topdir}"/reports
-	SCP "${board_user}@${board_ip}:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "${topdir}"/reports 1>/dev/null || {
+	SCP "${board_user}@[${board_ip}]:/tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml" "${topdir}"/reports 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
 		exit 1
 	}
