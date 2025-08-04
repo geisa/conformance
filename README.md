@@ -60,13 +60,16 @@ Optional options:
 * `--password <password>`: The password for the target device (default: empty)
 * `--no-reports` : Do not generate test reports (only run tests and display results)
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
+* `--no-glee-tests`: Do not run GEISA Linux Execution Environment Conformance tests
+* `--no-gadm-tests`: Do not run GEISA Application & Device Management Conformance tests
+* `--no-gapi-tests`: Do not run GEISA Application Programming Interface Conformance tests
 * `--help`: display help message
 
 Environment variables can also be used to configure the script:
 * `CONFORMACE_SCP_ARGS`: Additional arguments for the `scp` command
 * `CONFORMACE_SSH_ARGS`: Additional arguments for the `ssh` command
 * `GLEE_TESTS`: Specify the list of GEISA LEE tests name to run (default: all tests)
-The tests names correspond to the logging suite name defined in each test file.
+The tests names correspond to a part of the filename.
 Example: `GLEE_TESTS="os_requirements_tests application_isolation"` will run only the `os_requirements_tests` and `application_isolation` tests.
 
 A xml and pdf report will be generated in the `reports` directory.
@@ -103,9 +106,9 @@ If you want to launch the tests manually, you can transfer the tests (src/GEISA-
 Then on the target, you can run the tests with the following command:
 
 ```bash
-$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report.xml /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf
+$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-lee-conformance-report.xml /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf
 ```
-This will generate a `geisa-conformance-report.xml` file in the current directory. This file will be used to generated the PDF report.
+This will generate a `geisa-lee-conformance-report.xml` file in the current directory. This file will be used to generated the PDF report.
 If you only want to run the tests without generating the report, you can run the following command:
 
 ```bash
@@ -114,7 +117,7 @@ $ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/GEISA-LEE-tests/
 
 A special case is done for the bandwidth test, as it requires a server to run the test. You can run the following command to launch the tests and generate the report:
 ```bash
-$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-conformance-report-bandwidth.xml /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf
+$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-lee-conformance-report-bandwidth.xml /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf
 ```
 or without the report generation:
 ```bash
@@ -198,7 +201,7 @@ The following requirements are needed to run the static test manually:
 Run the following command to execute the static test:
 
 ```bash
-$ shellcheck -xo all launch_conformance_tests.sh src/launch_conformance_tests_ssh.sh
-$ pylint src/launch_conformance_tests_serial.py
-$ black --check --diff src/launch_conformance_tests_serial.py
+$ shellcheck -xo all launch_conformance_tests.sh src/*.sh
+$ pylint src/launch_glee_conformance_tests_serial.py
+$ black --check --diff src/launch_glee_conformance_tests_serial.py
 ```
