@@ -56,8 +56,8 @@ results.
 
 Optional options:
 
-* `--user <username>`: The username for SSH and serial connection (default: root)
-* `--password <password>`: The password for SSH and serial connection (default: empty)
+* `--user <username>`: The username for the target device (default: root)
+* `--password <password>`: The password for the target device (default: empty)
 * `--no-reports` : Do not generate test reports (only run tests and display results)
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
 * `--help`: display help message
