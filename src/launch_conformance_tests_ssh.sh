@@ -8,13 +8,17 @@
 
 RED="\e[31m"
 ENDCOLOR="\e[0m"
+declare CONFORMANCE_SSH_ARGS
+declare CONFORMANCE_SCP_ARGS
 
 SSH() {
-	sshpass -p "${board_password}" ssh -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
+	#shellcheck disable=SC2086
+	sshpass -p "${board_password}" ssh ${CONFORMANCE_SSH_ARGS} -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
 }
 
 SCP() {
-	sshpass -p "${board_password}" scp -O -o StrictHostKeyChecking=no "$@"
+	#shellcheck disable=SC2086
+	sshpass -p "${board_password}" scp ${CONFORMANCE_SCP_ARGS} -o StrictHostKeyChecking=no "$@"
 }
 
 connect_and_transfer_with_ssh() {

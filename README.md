@@ -62,6 +62,10 @@ Optional options:
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
 * `--help`: display help message
 
+Environment variables can also be used to configure the script:
+* `CONFORMACE_SCP_ARGS`: Additional arguments for the `scp` command
+* `CONFORMACE_SSH_ARGS`: Additional arguments for the `ssh` command
+
 A xml and pdf report will be generated in the `reports` directory.
 
 To use the docker support run with the following commands:
