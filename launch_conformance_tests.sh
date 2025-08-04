@@ -31,8 +31,8 @@ or
   --serial <serial_port>  Specify the serial port of the board to run tests on
 
 Optional options:
-  --user <username>   Specify the username for SSH connection (default: root)
-  --password <password>  Specify the password for SSH connection (default: empty)
+  --user <username>   Specify the username for SSH and serial connection (default: root)
+  --password <password>  Specify the password for SSH and serial connection (default: empty)
   --no-reports        Do not generate test reports (only run tests and display results)
   --baudrate <baudrate> Specify the baudrate for the serial port of the board (default: 115200)
   --help              Show this help message
