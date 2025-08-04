@@ -53,9 +53,12 @@ launch_tests_with_report_ssh() {
 	local board_password="$3"
 	local topdir="$4"
 
+	# Get host date for NTP test
+	CURRENT_DATE_UTC=$(date -u +"%Y-%m-%d_%H:%M")
+
 	echo ""
 	echo "Launching tests..."
-	SSH "/tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
+	SSH "CURRENT_DATE_UTC=${CURRENT_DATE_UTC} /tmp/conformance_tests/cukinia/cukinia -f junitxml -o /tmp/conformance_tests/cukinia-tests/geisa-conformance-report.xml /tmp/conformance_tests/cukinia-tests/cukinia.conf"
 	test_exit_code=$?
 
 	echo ""
@@ -74,9 +77,12 @@ launch_tests_without_report_ssh() {
 	local board_user="$2"
 	local board_password="$3"
 
+	# Get host date for NTP test
+	CURRENT_DATE_UTC=$(date -u +"%Y-%m-%d_%H:%M")
+
 	echo ""
 	echo "Launching tests..."
-	SSH "/tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
+	SSH "CURRENT_DATE_UTC=${CURRENT_DATE_UTC} /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/cukinia-tests/cukinia.conf"
 	test_exit_code=$?
 
 	export test_exit_code
