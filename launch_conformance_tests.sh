@@ -13,6 +13,7 @@ ENDCOLOR="\e[0m"
 ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
+bandwidth_test_exit_code=0
 
 source "${TOPDIR}"/src/launch_conformance_tests_ssh.sh
 
@@ -30,8 +31,8 @@ or
   --serial <serial_port>  Specify the serial port of the board to run tests on
 
 Optional options:
-  --user <username>   Specify the username for SSH connection (default: root)
-  --password <password>  Specify the password for SSH connection (default: empty)
+  --user <username>   Specify the username for SSH and serial connection (default: root)
+  --password <password>  Specify the password for SSH and serial connection (default: empty)
   --no-reports        Do not generate test reports (only run tests and display results)
   --baudrate <baudrate> Specify the baudrate for the serial port of the board (default: 115200)
   --help              Show this help message
@@ -104,14 +105,21 @@ if [[ -n ${BOARD_IP} && -n ${BOARD_SERIAL} ]]; then
 	echo -e "${ORANGE}Warning:${ENDCOLOR} Board IP address and serial port specified, launching test with ssh connection."
 fi
 
+if ! ${NO_REPORTS}; then
+	echo "Cleaning previous reports"
+	rm -rf "${TOPDIR}"/reports/*
+fi
+
 if [[ -n ${BOARD_IP} ]]; then
 	BOARD_USER=${BOARD_USER:-root}
 
 	connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 	if ! ${NO_REPORTS}; then
 		launch_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		launch_bandwidth_test_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 	else
 		launch_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+		launch_bandwidth_test_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 	fi
 	cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 else
@@ -144,4 +152,4 @@ if ! ${NO_REPORTS}; then
 	cd "${TOPDIR}" || exit 1
 fi
 
-exit "${test_exit_code}"
+exit $(("${test_exit_code}" || "${bandwidth_test_exit_code}"))
