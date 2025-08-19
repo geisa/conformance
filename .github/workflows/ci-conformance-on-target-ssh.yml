@@ -1,0 +1,68 @@
+# Copyright (C) 2025 Southern California Edison.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Reusable workflow for ssh testing
+
+on:
+  workflow_call:
+    inputs:
+        runner:
+          required: true
+          type: string
+        user:
+          type: string
+          required: false
+          default: 'root'
+    secrets:
+        target_ip:
+          required: true
+        target_password:
+          required: false
+
+jobs:
+    on-target-test-ssh:
+        runs-on: ${{inputs.runner}}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                ref: ${{ github.event.pull_request.head.sha || github.sha }}
+                submodules: true
+            - name: Run on target tests with report generation using ssh
+              run: |
+                cqfd init
+                cqfd run ./launch_conformance_tests.sh \
+                    --ip ${{secrets.target_ip}} \
+                    --user ${{ inputs.user }} \
+                    ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }}
+            - name: Upload results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: geisa-conformance-report-ssh-${{inputs.runner}}
+                  path: reports/geisa-conformance-report.pdf
+                  if-no-files-found: error
+            - name: Upload tests xml
+              if: always()
+              uses: dorny/test-reporter@v2
+              with:
+                name: SSH Tests
+                path: reports/*.xml
+                reporter: jest-junit
+            - name: Run on target tests without report generation using ssh
+              run: |
+                cqfd init
+                cqfd run ./launch_conformance_tests.sh \
+                    --ip ${{secrets.target_ip}} \
+                    --user ${{ inputs.user }} \
+                    ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
+                    --no-reports
+            - name: Test selecting GLEE tests to run
+              run: |
+                cqfd init
+                GLEE_TESTS="basic_hardware_tests os_requirements_tests" \
+                cqfd run ./launch_conformance_tests.sh \
+                    --ip ${{secrets.target_ip}} \
+                    --user ${{inputs.user}} \
+                    ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
+                    --no-reports
