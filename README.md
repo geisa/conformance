@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI Conformance status](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml/badge.svg)](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml)
+[![CI Conformance status](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml/badge.svg?branch=main)](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml)
 
 # GEISA Conformance - a GEISA validation framework
 
