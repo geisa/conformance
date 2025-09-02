@@ -1,4 +1,5 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CI Conformance status](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml/badge.svg?branch=main)](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml)
 
 # GEISA Conformance - a GEISA validation framework
 
@@ -201,7 +202,59 @@ The following requirements are needed to run the static test manually:
 Run the following command to execute the static test:
 
 ```bash
-$ shellcheck -xo all launch_conformance_tests.sh src/*.sh
+$ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/tests.d/*.sh
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
 ```
+
+## CI
+
+The CI is configured to run static tests (shellcheck, pylint, black) and on
+target tests on each push.
+
+If you want to add a new target in the CI, add your runner in github settings
+with a label corresponding to the target and modify
+.github/workflows/ci-conformance.yml:
+
+* To add ssh tests add the following code snippet in the `jobs` section:
+```
+on-target-tests-ssh-<target_name>:
+    uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
+    with:
+        runner: <target_name>
+        user: <target_user>
+    secrets:
+        target_ip: ${{ secrets.<target_ip_secret> }}
+        target_password: ${{ secrets.<target_ip_password> }}
+    needs: [shellcheck, pylint, black]
+```
+with :
+* `<target_name>` being the name of your target (corresponding to the label
+you configured).
+* `<target_user>` being the user to connect to the target (optional, default: root).
+* `<target_ip_secret>` being the name of the secret containing the IP address
+of your target.
+* `<target_ip_password>` being the name of the secret containing the password
+of your target. (optional, if not provided, no password will be used for the SSH connection)
+
+* To add serial tests add the following code snippet in the `jobs` section:
+```
+on-target-tests-serial-<target_name>:
+    uses: ./.github/workflows/ci-conformance-on-target-serial.yml
+    with:
+        runner: <target_name>
+        user: <target_user>
+        target_tty: <target_tty>
+        target_baudrate: <target_baudrate>
+    secrets:
+        target_password: ${{ secrets.<target_ip_password> }}
+    needs: [shellcheck, pylint, black, on-target-tests-ssh-<target_name>]
+```
+with :
+* `<target_name>` being the name of your target (corresponding to the label
+you configured).
+* `<target_user>` being the user to connect to the target (optional, default: root).
+* `<target_tty>` being the serial port of your target (e.g. /dev/ttyUSB0).
+* `<target_baudrate>` being the baudrate of your target (optional, default: 115200)
+* `<target_ip_password>` being the name of the secret containing the password
+of your target. (optional, if not provided, no password will be used for the serial connection)
