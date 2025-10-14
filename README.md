@@ -4,7 +4,9 @@
 # GEISA Conformance - a GEISA validation framework
 
 GEISA conformance is designed to help developers to validate the conformance
-with [GEISA specifications](https://github.com/geisa/specification)
+with the [GEISA Specification](https://github.com/geisa/specification).  
+
+The GEISA Specification is an effort by the Grid Edge Interoperability and Security Alliance to define a consistent, secure, and interoperable computing environment for embedded devices at the very edge of the electric utility grid, like electric meters and distribution automation devices, for the benefit of utilities, platform vendors, and software vendors.  If you would like to get involved, please head over to our Wiki page for details on participation (https://lfenergy.org/projects/geisa/).  Follow the onboarding link for details about participating in our community process.  
 
 ## Usage
 
