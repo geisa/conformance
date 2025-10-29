@@ -4,7 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mosquitto.h>
+#include <signal.h>
 #include <unistd.h>
+
+static int sent_mid;
+static volatile int running = 1;
+
+static void handle_signal(int s)
+{
+	fprintf(stderr, "Caught signal %d, disconnecting...\n", s);
+	running = 0;
+}
 
 static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 {
@@ -13,6 +23,16 @@ static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 	} else {
 		fprintf(stderr, "[connect] failed, rc=%d\n", rc);
 		mosquitto_disconnect(mosq);
+	}
+}
+
+static void on_publish(struct mosquitto *mosq, void *obj, int mid)
+{
+	if(mid == sent_mid){
+		running = 0;
+	} else {
+		fprintf(stderr, "[publish] mid=%d (not expected %d)\n", mid, sent_mid);
+		exit(1);
 	}
 }
 
@@ -47,13 +67,23 @@ int main(int argc, char **argv)
 	}
 
 	mosquitto_connect_callback_set(mosq, on_connect);
+	mosquitto_publish_callback_set(mosq, on_publish);
 	mosquitto_message_callback_set(mosq, on_message);
+
+	signal(SIGINT, handle_signal);
+	signal(SIGTERM, handle_signal);
 
 	rc = mosquitto_connect(mosq, broker, 1883, 60);
 	if(rc != MOSQ_ERR_SUCCESS){
 		fprintf(stderr, "Error: could not connect to %s: %s\n", broker,
 			mosquitto_strerror(rc));
 		goto destroy;
+	}
+
+	rc = mosquitto_loop_start(mosq);
+	if (rc != MOSQ_ERR_SUCCESS) {
+		fprintf(stderr, "Loop start failed: %s\n", mosquitto_strerror(rc));
+		goto disconnect;
 	}
 
 	if(strcmp(mode, "sub") == 0) {
@@ -67,12 +97,10 @@ int main(int argc, char **argv)
 		fprintf(stdout, "Subscribed to %s on %s — waiting for messages...\n",
 		       topic, broker);
 
-		mosquitto_loop_forever(mosq, -1, 1);
-
 	} else if(strcmp(mode, "pub") == 0) {
 		int mid;
-		rc = mosquitto_publish(mosq, &mid, topic, (int)strlen(message),
-				       message, 1, false);
+		rc = mosquitto_publish(mosq, &sent_mid, topic,
+				       (int)strlen(message), message, 1, false);
 
 		if(rc != MOSQ_ERR_SUCCESS) {
 			fprintf(stderr, "Publish failed: %s\n",
@@ -81,16 +109,18 @@ int main(int argc, char **argv)
 		}
 
 		fprintf(stdout, "Published to %s on %s: %s\n", topic, broker, message);
-		/* Give network loop a short time to send the message */
-		for(int i=0; i<5 && mosquitto_loop(mosq, 100, 1) == MOSQ_ERR_SUCCESS; ++i) {
-			usleep(100000);
-		}
 	} else {
 		fprintf(stderr, "Unknown mode: %s\n", mode);
+		running = 0;
+	}
+
+	while (running) {
+		sleep(1);
 	}
 
 disconnect:
 	mosquitto_disconnect(mosq);
+	mosquitto_loop_stop(mosq, false);
 destroy:
 	mosquitto_destroy(mosq);
 cleanup:
