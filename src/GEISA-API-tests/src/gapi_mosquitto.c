@@ -26,6 +26,11 @@ static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 	}
 }
 
+static void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
+{
+	fprintf(stdout, "[disconnected] rc=%d\n", rc);
+}
+
 static void on_publish(struct mosquitto *mosq, void *obj, int mid)
 {
 	if(mid == sent_mid){
@@ -67,6 +72,7 @@ int main(int argc, char **argv)
 	}
 
 	mosquitto_connect_callback_set(mosq, on_connect);
+	mosquitto_disconnect_callback_set(mosq, on_disconnect);
 	mosquitto_publish_callback_set(mosq, on_publish);
 	mosquitto_message_callback_set(mosq, on_message);
 
