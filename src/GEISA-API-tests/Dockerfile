@@ -8,7 +8,7 @@ RUN apk update && apk add --no-cache \
       && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /geisa-api-conformance-tests
-COPY src/gapi_mosquitto.c /geisa-api-conformance-tests
+COPY src/* /geisa-api-conformance-tests
 
 RUN gcc -o /usr/local/bin/gapi_conformance_tests gapi_mosquitto.c -lmosquitto
 

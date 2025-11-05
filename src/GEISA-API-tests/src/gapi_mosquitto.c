@@ -1,14 +1,13 @@
-// Copyright (C) 2025 Southern California Edison
+/**
+ * @file gapi_mosquitto.c
+ * @brief Definition file for GEISA MQTT communication using the Mosquitto library
+ * @copyright Copyright (C) 2025 Southern California Edison
+ */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <mosquitto.h>
-#include <signal.h>
-#include <unistd.h>
+#include "gapi_mosquitto.h"
 
 static int sent_mid;
-static volatile int running = 1;
+volatile int running = 1;
 
 static void handle_signal(int s)
 {
@@ -48,20 +47,10 @@ static void on_message(struct mosquitto *mosq, void *obj,
 		msg->payloadlen, (char *)msg->payload);
 }
 
-int main(int argc, char **argv)
+struct mosquitto * api_communication_init(const char *broker, int port)
 {
-	if(argc < 4) {
-		fprintf(stderr, "Usage:\n  %s sub <broker> <topic>\n  %s pub <broker> <topic> <message>\n",
-			argv[0], argv[0]);
-		return 1;
-	}
-
-	const char *mode = argv[1];
-	const char *broker = argv[2];
-	const char *topic = argv[3];
-	const char *message = (argc >= 5) ? argv[4] : "";
-	struct mosquitto *mosq;
-	int rc = 0;
+	struct mosquitto *mosq = NULL;
+	int rc;
 
 	mosquitto_lib_init();
 
@@ -79,7 +68,7 @@ int main(int argc, char **argv)
 	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 
-	rc = mosquitto_connect(mosq, broker, 1883, 60);
+	rc = mosquitto_connect(mosq, broker, port, 60);
 	if(rc != MOSQ_ERR_SUCCESS){
 		fprintf(stderr, "Error: could not connect to %s: %s\n", broker,
 			mosquitto_strerror(rc));
@@ -88,31 +77,94 @@ int main(int argc, char **argv)
 
 	rc = mosquitto_loop_start(mosq);
 	if (rc != MOSQ_ERR_SUCCESS) {
-		fprintf(stderr, "Loop start failed: %s\n", mosquitto_strerror(rc));
+		fprintf(stderr, "Loop start failed: %s\n",
+			mosquitto_strerror(rc));
 		goto disconnect;
 	}
 
+	return mosq;
+
+disconnect:
+	mosquitto_disconnect(mosq);
+	mosquitto_loop_stop(mosq, false);
+destroy:
+	mosquitto_destroy(mosq);
+cleanup:
+	mosquitto_lib_cleanup();
+	return NULL;
+}
+
+void api_communication_deinit(struct mosquitto *mosq)
+{
+	mosquitto_disconnect(mosq);
+	mosquitto_loop_stop(mosq, false);
+	mosquitto_destroy(mosq);
+	mosquitto_lib_cleanup();
+}
+
+int api_subscribe(struct mosquitto *mosq, const char *topic)
+{
+	int rc;
+
+	rc = mosquitto_subscribe(mosq, NULL, topic, 0);
+	if(rc != MOSQ_ERR_SUCCESS) {
+		fprintf(stderr, "Subscribe failed: %s\n",
+			mosquitto_strerror(rc));
+		return rc;
+	}
+
+	return 0;
+}
+
+int api_publish(struct mosquitto *mosq, const char *topic, const char *message)
+{
+	int rc;
+
+	rc = mosquitto_publish(mosq, &sent_mid, topic,
+			       (int)strlen(message), message, 1, false);
+	if(rc != MOSQ_ERR_SUCCESS) {
+		fprintf(stderr, "Publish failed: %s\n",
+			mosquitto_strerror(rc));
+		return rc;
+	}
+
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	if(argc < 4) {
+		fprintf(stderr, "Usage:\n  %s sub <broker> <topic>\n  %s pub <broker> <topic> <message>\n",
+			argv[0], argv[0]);
+		return 1;
+	}
+
+	const char *mode = argv[1];
+	const char *broker = argv[2];
+	const char *topic = argv[3];
+	const char *message = (argc >= 5) ? argv[4] : "";
+	struct mosquitto *mosq;
+	int port = 1883;
+	int rc = 0;
+
+	mosq = api_communication_init(broker, port);
+	if (!mosq) {
+		rc = EXIT_FAILURE;
+		goto exit;
+	}
+
 	if(strcmp(mode, "sub") == 0) {
-		rc = mosquitto_subscribe(mosq, NULL, topic, 0);
-		if(rc != MOSQ_ERR_SUCCESS) {
-			fprintf(stderr, "Subscribe failed: %s\n",
-				mosquitto_strerror(rc));
+		rc = api_subscribe(mosq, topic);
+		if(rc)
 			goto disconnect;
-		}
 
 		fprintf(stdout, "Subscribed to %s on %s — waiting for messages...\n",
-		       topic, broker);
+			topic, broker);
 
 	} else if(strcmp(mode, "pub") == 0) {
-		int mid;
-		rc = mosquitto_publish(mosq, &sent_mid, topic,
-				       (int)strlen(message), message, 1, false);
-
-		if(rc != MOSQ_ERR_SUCCESS) {
-			fprintf(stderr, "Publish failed: %s\n",
-				mosquitto_strerror(rc));
+		rc = api_publish(mosq, topic, message);
+		if(rc)
 			goto disconnect;
-		}
 
 		fprintf(stdout, "Published to %s on %s: %s\n", topic, broker, message);
 	} else {
@@ -125,11 +177,7 @@ int main(int argc, char **argv)
 	}
 
 disconnect:
-	mosquitto_disconnect(mosq);
-	mosquitto_loop_stop(mosq, false);
-destroy:
-	mosquitto_destroy(mosq);
-cleanup:
-	mosquitto_lib_cleanup();
+	api_communication_deinit(mosq);
+exit:
 	return rc;
 }
