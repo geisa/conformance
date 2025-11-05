@@ -7,7 +7,6 @@
 #include "gapi_mosquitto.h"
 
 static int sent_mid;
-volatile int running = 1;
 
 static void handle_signal(int s)
 {
@@ -129,55 +128,4 @@ int api_publish(struct mosquitto *mosq, const char *topic, const char *message)
 	}
 
 	return 0;
-}
-
-int main(int argc, char **argv)
-{
-	if(argc < 4) {
-		fprintf(stderr, "Usage:\n  %s sub <broker> <topic>\n  %s pub <broker> <topic> <message>\n",
-			argv[0], argv[0]);
-		return 1;
-	}
-
-	const char *mode = argv[1];
-	const char *broker = argv[2];
-	const char *topic = argv[3];
-	const char *message = (argc >= 5) ? argv[4] : "";
-	struct mosquitto *mosq;
-	int port = 1883;
-	int rc = 0;
-
-	mosq = api_communication_init(broker, port);
-	if (!mosq) {
-		rc = EXIT_FAILURE;
-		goto exit;
-	}
-
-	if(strcmp(mode, "sub") == 0) {
-		rc = api_subscribe(mosq, topic);
-		if(rc)
-			goto disconnect;
-
-		fprintf(stdout, "Subscribed to %s on %s — waiting for messages...\n",
-			topic, broker);
-
-	} else if(strcmp(mode, "pub") == 0) {
-		rc = api_publish(mosq, topic, message);
-		if(rc)
-			goto disconnect;
-
-		fprintf(stdout, "Published to %s on %s: %s\n", topic, broker, message);
-	} else {
-		fprintf(stderr, "Unknown mode: %s\n", mode);
-		running = 0;
-	}
-
-	while (running) {
-		sleep(1);
-	}
-
-disconnect:
-	api_communication_deinit(mosq);
-exit:
-	return rc;
 }
