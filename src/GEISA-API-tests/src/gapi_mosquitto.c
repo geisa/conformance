@@ -16,6 +16,7 @@ static void handle_signal(int s)
 
 static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 {
+	(void)obj;
 	if(rc == 0) {
 		fprintf(stdout, "[connected] OK\n");
 	} else {
@@ -26,11 +27,15 @@ static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 
 static void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
+	(void)obj;
+	(void)mosq;
 	fprintf(stdout, "[disconnected] rc=%d\n", rc);
 }
 
 static void on_publish(struct mosquitto *mosq, void *obj, int mid)
 {
+	(void)obj;
+	(void)mosq;
 	if(mid == sent_mid){
 		running = 0;
 	} else {
@@ -42,6 +47,8 @@ static void on_publish(struct mosquitto *mosq, void *obj, int mid)
 static void on_message(struct mosquitto *mosq, void *obj,
 		       const struct mosquitto_message *msg)
 {
+	(void)obj;
+	(void)mosq;
 	fprintf(stdout, "[msg] topic=%s payload=%.*s\n", msg->topic,
 		msg->payloadlen, (char *)msg->payload);
 }

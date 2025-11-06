@@ -3,7 +3,7 @@
 objects = gapi_cmdline
 all: $(objects)
 
-CFLAGS := -O2 -Wall -std=c11 -Wextra -pedantic
+CFLAGS := -O2 -Wall -std=c11 -Wextra -pedantic -Werror
 LDLIBS := -lmosquitto
 
 $(objects): %: %.c gapi_mosquitto.o
