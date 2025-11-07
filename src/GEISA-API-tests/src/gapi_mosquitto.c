@@ -74,6 +74,8 @@ struct mosquitto * api_communication_init(const char *broker, int port)
 	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 
+	mosquitto_loop(mosq, -1, 1);
+
 	rc = mosquitto_connect(mosq, broker, port, 60);
 	if(rc != MOSQ_ERR_SUCCESS){
 		fprintf(stderr, "Error: could not connect to %s: %s\n", broker,
@@ -81,18 +83,8 @@ struct mosquitto * api_communication_init(const char *broker, int port)
 		goto destroy;
 	}
 
-	rc = mosquitto_loop_start(mosq);
-	if (rc != MOSQ_ERR_SUCCESS) {
-		fprintf(stderr, "Loop start failed: %s\n",
-			mosquitto_strerror(rc));
-		goto disconnect;
-	}
-
 	return mosq;
 
-disconnect:
-	mosquitto_disconnect(mosq);
-	mosquitto_loop_stop(mosq, false);
 destroy:
 	mosquitto_destroy(mosq);
 cleanup:
@@ -103,7 +95,6 @@ cleanup:
 void api_communication_deinit(struct mosquitto *mosq)
 {
 	mosquitto_disconnect(mosq);
-	mosquitto_loop_stop(mosq, false);
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
 }

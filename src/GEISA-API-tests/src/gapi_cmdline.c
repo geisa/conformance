@@ -49,6 +49,7 @@ int main(int argc, char **argv)
 	}
 
 	while (running) {
+		mosquitto_loop(mosq, -1, 1);
 		sleep(1);
 	}
 
