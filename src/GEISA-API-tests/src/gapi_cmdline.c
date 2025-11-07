@@ -6,6 +6,7 @@
 #include "gapi_mosquitto.h"
 
 volatile int running = 1;
+volatile bool isConnected = false;
 
 int main(int argc, char **argv)
 {
@@ -27,6 +28,11 @@ int main(int argc, char **argv)
 	if (!mosq) {
 		rc = EXIT_FAILURE;
 		goto exit;
+	}
+
+	while (running && ! isConnected) {
+		mosquitto_loop(mosq, -1, 1);
+		sleep(1);
 	}
 
 	if(strcmp(mode, "sub") == 0) {

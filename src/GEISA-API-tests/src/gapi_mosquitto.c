@@ -19,8 +19,10 @@ static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 	(void)obj;
 	if(rc == 0) {
 		fprintf(stdout, "[connected] OK\n");
+		isConnected = true;
 	} else {
 		fprintf(stderr, "[connect] failed, rc=%d\n", rc);
+		running = 0;
 		mosquitto_disconnect(mosq);
 	}
 }
@@ -30,6 +32,7 @@ static void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 	(void)obj;
 	(void)mosq;
 	fprintf(stdout, "[disconnected] rc=%d\n", rc);
+	isConnected = false;
 }
 
 static void on_publish(struct mosquitto *mosq, void *obj, int mid)

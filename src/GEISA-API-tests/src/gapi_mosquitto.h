@@ -20,6 +20,11 @@
 extern volatile int running;
 
 /**
+ * @brief Global variable to indicate the connection state of the MQTT client
+ */
+extern volatile bool isConnected;
+
+/**
  * @brief Initialize MQTT communication with the specified broker and port
  * 
  * @param broker The MQTT broker address
