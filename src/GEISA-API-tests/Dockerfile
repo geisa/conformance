@@ -19,5 +19,7 @@ RUN apk update && apk add --no-cache \
     mosquitto-libs \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=0 /geisa-api-conformance-tests/gapi_cmdline /usr/local/bin/gapi_cmdline
+COPY --exclude=*.h --exclude=*.c --exclude=Makefile --from=0 \
+    /geisa-api-conformance-tests/ /usr/local/bin/
+
 CMD ["/usr/local/bin/gapi_cmdline", "sub", "localhost", "test/topic"]
