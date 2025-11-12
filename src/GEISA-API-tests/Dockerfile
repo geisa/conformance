@@ -9,7 +9,7 @@ RUN apk update && apk add --no-cache \
       && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /geisa-api-conformance-tests
-COPY src/* /geisa-api-conformance-tests
+COPY GEISA-API-tests/src/* /geisa-api-conformance-tests
 
 RUN make -j"$(nproc)"
 
@@ -22,4 +22,12 @@ RUN apk update && apk add --no-cache \
 COPY --exclude=*.h --exclude=*.c --exclude=Makefile --from=0 \
     /geisa-api-conformance-tests/ /usr/local/bin/
 
-CMD ["/usr/local/bin/gapi_cmdline", "sub", "localhost", "test/topic"]
+COPY GEISA-API-tests/cukinia.conf /etc/GEISA-API-tests/cukinia.conf
+
+COPY GEISA-API-tests/tests.d /etc/GEISA-API-tests/tests.d
+
+COPY GEISA-API-tests/tests_configuration.conf /etc/GEISA-API-tests/tests_configuration.conf
+
+COPY cukinia/cukinia /etc/cukinia/cukinia
+
+CMD ["/etc/cukinia/cukinia", "-f", "junitxml", "-o", "/etc/GEISA-API-tests/geisa-api-conformance-report.xml", "/etc/GEISA-API-tests/cukinia.conf"]
