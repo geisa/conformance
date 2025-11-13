@@ -11,7 +11,7 @@ static int sent_mid;
 static void handle_signal(int s)
 {
 	fprintf(stderr, "Caught signal %d, disconnecting...\n", s);
-	running = 0;
+	running = false;
 }
 
 static void on_connect(struct mosquitto *mosq, void *obj, int rc)
@@ -22,7 +22,7 @@ static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 		isConnected = true;
 	} else {
 		fprintf(stderr, "[connect] failed, rc=%d\n", rc);
-		running = 0;
+		running = false;
 		mosquitto_disconnect(mosq);
 	}
 }
@@ -40,7 +40,7 @@ static void on_publish(struct mosquitto *mosq, void *obj, int mid)
 	(void)obj;
 	(void)mosq;
 	if(mid == sent_mid){
-		running = 0;
+		running = false;
 	} else {
 		fprintf(stderr, "[publish] mid=%d (not expected %d)\n", mid, sent_mid);
 		exit(1);

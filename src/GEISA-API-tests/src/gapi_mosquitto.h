@@ -17,7 +17,7 @@
 /**
  * @brief Global variable to control the running state of the MQTT client
  */
-extern volatile int running;
+extern volatile bool running;
 
 /**
  * @brief Global variable to indicate the connection state of the MQTT client

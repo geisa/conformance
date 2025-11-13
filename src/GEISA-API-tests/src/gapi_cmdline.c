@@ -5,7 +5,7 @@
  */
 #include "gapi_mosquitto.h"
 
-volatile int running = 1;
+volatile bool running = true;
 volatile bool isConnected = false;
 
 int main(int argc, char **argv)
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 		fprintf(stdout, "Published to %s on %s: %s\n", topic, broker, message);
 	} else {
 		fprintf(stderr, "Unknown mode: %s\n", mode);
-		running = 0;
+		running = false;
 	}
 
 	while (running) {
