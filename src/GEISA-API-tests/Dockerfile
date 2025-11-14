@@ -12,6 +12,7 @@ WORKDIR /geisa-api-conformance-tests
 COPY GEISA-API-tests/src/* /geisa-api-conformance-tests
 
 RUN make -j"$(nproc)"
+RUN make install
 
 FROM alpine:3.22
 
@@ -19,8 +20,7 @@ RUN apk update && apk add --no-cache \
     mosquitto-libs \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --exclude=*.h --exclude=*.c --exclude=Makefile --from=0 \
-    /geisa-api-conformance-tests/ /usr/local/bin/
+COPY --from=0 /usr/local/bin/ /usr/local/bin/
 
 COPY GEISA-API-tests/cukinia.conf /etc/GEISA-API-tests/cukinia.conf
 
