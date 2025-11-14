@@ -1,6 +1,7 @@
 /**
  * @file gapi_mosquitto.c
- * @brief Definition file for GEISA MQTT communication using the Mosquitto library
+ * @brief Definition file for GEISA MQTT communication using the Mosquitto
+ * library
  * @copyright Copyright (C) 2025 Southern California Edison
  */
 
@@ -17,7 +18,7 @@ static void handle_signal(int s)
 static void on_connect(struct mosquitto *mosq, void *obj, int rc)
 {
 	(void)obj;
-	if(rc == 0) {
+	if (rc == 0) {
 		fprintf(stdout, "[connected] OK\n");
 		isConnected = true;
 	} else {
@@ -39,10 +40,11 @@ static void on_publish(struct mosquitto *mosq, void *obj, int mid)
 {
 	(void)obj;
 	(void)mosq;
-	if(mid == sent_mid){
+	if (mid == sent_mid) {
 		running = false;
 	} else {
-		fprintf(stderr, "[publish] mid=%d (not expected %d)\n", mid, sent_mid);
+		fprintf(stderr, "[publish] mid=%d (not expected %d)\n", mid,
+			sent_mid);
 		exit(1);
 	}
 }
@@ -56,7 +58,7 @@ static void on_message(struct mosquitto *mosq, void *obj,
 		msg->payloadlen, (char *)msg->payload);
 }
 
-struct mosquitto * api_communication_init(const char *broker, int port)
+struct mosquitto *api_communication_init(const char *broker, int port)
 {
 	struct mosquitto *mosq = NULL;
 	int rc;
@@ -64,7 +66,7 @@ struct mosquitto * api_communication_init(const char *broker, int port)
 	mosquitto_lib_init();
 
 	mosq = mosquitto_new(NULL, true, NULL);
-	if(!mosq) {
+	if (!mosq) {
 		fprintf(stderr, "Error: mosquitto_new() failed\n");
 		goto cleanup;
 	}
@@ -80,7 +82,7 @@ struct mosquitto * api_communication_init(const char *broker, int port)
 	mosquitto_loop(mosq, -1, 1);
 
 	rc = mosquitto_connect(mosq, broker, port, 60);
-	if(rc != MOSQ_ERR_SUCCESS){
+	if (rc != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Error: could not connect to %s: %s\n", broker,
 			mosquitto_strerror(rc));
 		goto destroy;
@@ -107,7 +109,7 @@ int api_subscribe(struct mosquitto *mosq, const char *topic)
 	int rc;
 
 	rc = mosquitto_subscribe(mosq, NULL, topic, 0);
-	if(rc != MOSQ_ERR_SUCCESS) {
+	if (rc != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Subscribe failed: %s\n",
 			mosquitto_strerror(rc));
 		return rc;
@@ -120,11 +122,10 @@ int api_publish(struct mosquitto *mosq, const char *topic, const char *message)
 {
 	int rc;
 
-	rc = mosquitto_publish(mosq, &sent_mid, topic,
-			       (int)strlen(message), message, 1, false);
-	if(rc != MOSQ_ERR_SUCCESS) {
-		fprintf(stderr, "Publish failed: %s\n",
-			mosquitto_strerror(rc));
+	rc = mosquitto_publish(mosq, &sent_mid, topic, (int)strlen(message),
+			       message, 1, false);
+	if (rc != MOSQ_ERR_SUCCESS) {
+		fprintf(stderr, "Publish failed: %s\n", mosquitto_strerror(rc));
 		return rc;
 	}
 

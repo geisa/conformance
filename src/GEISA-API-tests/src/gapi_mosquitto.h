@@ -7,11 +7,11 @@
 #ifndef GAPI_MOSQUITTO_H
 #define GAPI_MOSQUITTO_H
 
+#include <mosquitto.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mosquitto.h>
-#include <signal.h>
 #include <unistd.h>
 
 /**
@@ -26,16 +26,16 @@ extern volatile bool isConnected;
 
 /**
  * @brief Initialize MQTT communication with the specified broker and port
- * 
+ *
  * @param broker The MQTT broker address
  * @param port The MQTT broker port
  * @return A pointer to the initialized mosquitto struct
  */
-struct mosquitto * api_communication_init(const char *broker, int port);
+struct mosquitto *api_communication_init(const char *broker, int port);
 
 /**
  * @brief Deinitialize MQTT communication and clean up resources
- * 
+ *
  * @param mosq Pointer to the mosquitto struct to be cleaned up
  */
 void api_communication_deinit(struct mosquitto *mosq);

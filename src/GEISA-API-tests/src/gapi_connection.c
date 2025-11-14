@@ -10,7 +10,7 @@ volatile bool isConnected = false;
 
 int main(int argc, char **argv)
 {
-	if(argc < 2) {
+	if (argc < 2) {
 		fprintf(stderr, "Usage:\n  %s <broker>\n", argv[0]);
 		return 1;
 	}
@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	while (running && ! isConnected) {
+	while (running && !isConnected) {
 		mosquitto_loop(mosq, -1, 1);
 		sleep(1);
 	}
