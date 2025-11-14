@@ -8,10 +8,12 @@ RUN set -x \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         black \
+        fuse-overlayfs \
         iperf3 \
         iputils-ping \
         lrzsz \
         openssh-server \
+        podman \
         pylint \
         python3 \
         python3-pip \
@@ -21,6 +23,7 @@ RUN set -x \
         ruby-asciidoctor-pdf \
         shellcheck \
         sshpass \
+        uidmap \
     && rm -rf /var/lib/apt/lists/
 
 # Remove default dialout group alowing creating it with the host GID

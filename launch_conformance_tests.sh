@@ -167,6 +167,8 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 fi
 
 if [[ -z ${NO_GAPI_TESTS} ]]; then
+	create_gapi_test_container "${TOPDIR}"
+
 	if ! ${NO_REPORTS}; then
 		launch_gapi_tests_with_report "${TOPDIR}"
 	else

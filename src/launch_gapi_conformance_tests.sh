@@ -21,6 +21,23 @@ SCP() {
 	sshpass -p "${board_password}" scp ${CONFORMANCE_SCP_ARGS} -o StrictHostKeyChecking=no "$@"
 }
 
+create_gapi_test_container() {
+	local topdir="$1"
+
+	echo ""
+	echo "Creating GEISA Application Programming Interface Conformance Test Container"
+
+	rm -f "${topdir}"/gapi-conformance-tests.tar
+	podman build -t gapi-conformance-tests:latest --arch arm64 -f "${topdir}"/src/GEISA-API-tests/Dockerfile "${topdir}"/src || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to build API test container"
+		exit 1
+	}
+	podman save -o gapi-conformance-tests.tar gapi-conformance-tests:latest || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to save API test container"
+		exit 1
+	}
+}
+
 launch_gapi_tests_with_report() {
 	local topdir="$1"
 
