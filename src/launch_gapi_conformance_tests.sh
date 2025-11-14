@@ -109,3 +109,16 @@ launch_gapi_tests_without_report() {
 
 	export api_test_exit_code
 }
+
+cleanup_api_ssh() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+
+	echo ""
+	echo "Cleaning up test files on board"
+	SSH "rm -rf /tmp/GAPI-tests" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
+		exit 1
+	}
+}
