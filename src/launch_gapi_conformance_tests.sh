@@ -100,11 +100,19 @@ launch_gapi_tests_with_report() {
 }
 
 launch_gapi_tests_without_report() {
-	local topdir="$1"
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
 
 	echo ""
-	echo "Starting GEISA Application Programming Interface Conformance Tests"
-	"${topdir}"/src/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/cukinia.conf
+	echo "Launching tests..."
+
+	SSH podman load -i /tmp/GAPI-tests/gapi-conformance-tests.tar 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to load test container on board"
+		exit 1
+	}
+
+	SSH podman run -t --rm --network host gapi-conformance-tests:latest /etc/cukinia/cukinia /etc/GEISA-API-tests/cukinia.conf
 	api_test_exit_code=$?
 
 	export api_test_exit_code
