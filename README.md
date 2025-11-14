@@ -36,6 +36,8 @@ The automatic test launcher requires the following requirements:
     - python3 (On ubuntu, install with `sudo apt install python3`)
     - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
     - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
+  * For api tests:
+    - podman (On ubuntu, install with `sudo apt install podman`)
 
 A docker support is also available to launch the tests with a container, it requires:
   - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
