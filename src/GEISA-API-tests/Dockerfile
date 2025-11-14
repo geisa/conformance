@@ -30,4 +30,4 @@ COPY GEISA-API-tests/tests_configuration.conf /etc/GEISA-API-tests/tests_configu
 
 COPY cukinia/cukinia /etc/cukinia/cukinia
 
-CMD ["/etc/cukinia/cukinia", "-f", "junitxml", "-o", "/etc/GEISA-API-tests/geisa-api-conformance-report.xml", "/etc/GEISA-API-tests/cukinia.conf"]
+CMD ["/etc/cukinia/cukinia", "-f", "junitxml", "-o", "/reports/geisa-api-conformance-report.xml", "/etc/GEISA-API-tests/cukinia.conf"]

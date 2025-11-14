@@ -169,10 +169,15 @@ fi
 if [[ -z ${NO_GAPI_TESTS} ]]; then
 	create_gapi_test_container "${TOPDIR}"
 
-	if ! ${NO_REPORTS}; then
-		launch_gapi_tests_with_report "${TOPDIR}"
+	if [[ -n ${BOARD_IP} ]]; then
+		connect_and_transfer_gapi_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		if ! ${NO_REPORTS}; then
+			launch_gapi_tests_with_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		else
+			launch_gapi_tests_without_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		fi
 	else
-		launch_gapi_tests_without_report "${TOPDIR}"
+		echo -e "${ORANGE}Warning:${ENDCOLOR} API test through serial is not supported yet."
 	fi
 fi
 

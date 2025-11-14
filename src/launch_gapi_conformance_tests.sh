@@ -38,14 +38,64 @@ create_gapi_test_container() {
 	}
 }
 
-launch_gapi_tests_with_report() {
-	local topdir="$1"
+connect_and_transfer_gapi_with_ssh() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+	local topdir="$4"
 
 	echo ""
-	echo "Starting GEISA Application Programming Interface Conformance Tests"
-	"${topdir}"/src/cukinia/cukinia -f junitxml -o "${topdir}"/reports/geisa-api-conformance-report.xml "${topdir}"/src/GEISA-API-tests/cukinia.conf
+	echo "Starting GEISA API Conformance Tests on board at ${board_ip}"
+	if ! ping -c 1 -W 2 "${board_ip}" >/dev/null 2>&1; then
+		echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${board_ip}"
+		exit 1
+	fi
+
+	echo "Connecting to board as user '${board_user}'"
+
+	echo ""
+	echo "Cleaning previous test results on board"
+	SSH "rm -rf /tmp/GAPI-tests" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous test results on board"
+		exit 1
+	}
+
+	SSH mkdir -p /tmp/GAPI-tests || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to create test directory on board"
+		exit 1
+	}
+
+	echo "Transferring test files to board"
+	SCP "${topdir}"/gapi-conformance-tests.tar "${board_user}@[${board_ip}]:/tmp/GAPI-tests" 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
+		exit 1
+	}
+
+}
+
+launch_gapi_tests_with_report() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+	local topdir="$4"
+
+	echo ""
+	echo "Launching tests..."
+
+	SSH podman load -i /tmp/GAPI-tests/gapi-conformance-tests.tar 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to load test container on board"
+		exit 1
+	}
+	SSH podman run --rm --network host -v /tmp/GAPI-tests/:/reports gapi-conformance-tests:latest
 	api_test_exit_code=$?
 
+	echo ""
+	echo "Copying tests report on host"
+	mkdir -p "${topdir}"/reports
+	SCP "${board_user}@[${board_ip}]:/tmp/GAPI-tests/geisa-api-conformance-report.xml" "${topdir}"/reports/ 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to retrieve test reports from board"
+		exit 1
+	}
 	export api_test_exit_code
 }
 
