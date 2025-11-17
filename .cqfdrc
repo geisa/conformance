@@ -4,7 +4,8 @@ name='tests'
 
 [build]
 command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh \
-&& pylint src/launch_glee_conformance_tests_serial.py && black --check --diff src/launch_glee_conformance_tests_serial.py'
+&& pylint src/launch_glee_conformance_tests_serial.py && black --check --diff src/launch_glee_conformance_tests_serial.py \
+&& clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h'
 user_extra_groups='dialout tty'
 
 docker_run_args='--network=host -e CONFORMANCE_SCP_ARGS -e CONFORMANCE_SSH_ARGS \

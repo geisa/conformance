@@ -56,6 +56,20 @@ jobs:
             - name: Run black
               run: |
                   black --check --diff src/launch_glee_conformance_tests_serial.py
+    clang-format:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.pull_request.head.sha || github.sha }}
+            - name: Install clang-format
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y clang-format
+            - name: Run clang-format
+              run: |
+                  clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
     on-target-tests-ssh-imx93:
         uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
         with:
@@ -63,7 +77,7 @@ jobs:
         secrets:
             target_ip: ${{ secrets.IMX93_TARGET_IP }}
             target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
-        needs: [shellcheck, pylint, black]
+        needs: [shellcheck, pylint, black, clang-format]
     on-target-tests-serial-imx93:
         uses: ./.github/workflows/ci-conformance-on-target-serial.yml
         with:
@@ -71,4 +85,4 @@ jobs:
             target_tty: /dev/ttyGEISA_imx93
         secrets:
             target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
-        needs: [shellcheck, pylint, black, on-target-tests-ssh-imx93]
+        needs: [shellcheck, pylint, black, clang-format, on-target-tests-ssh-imx93]

@@ -200,6 +200,7 @@ The following requirements are needed to run the static test manually:
 * shellcheck (On ubuntu, install with `sudo apt install shellcheck`)
 * pylint (On ubuntu, install with `sudo apt install pylint`)
 * black (On ubuntu, install with `sudo apt install black`)
+* clang-format (On ubuntu, install with `sudo apt install clang-format`)
 
 #### Run the test
 
@@ -209,11 +210,12 @@ Run the following command to execute the static test:
 $ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/tests.d/*.sh
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
+$ clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
 ```
 
 ## CI
 
-The CI is configured to run static tests (shellcheck, pylint, black) and on
+The CI is configured to run static tests (shellcheck, pylint, black, clang-format) and on
 target tests on each push.
 
 If you want to add a new target in the CI, add your runner in github settings
@@ -230,7 +232,7 @@ on-target-tests-ssh-<target_name>:
     secrets:
         target_ip: ${{ secrets.<target_ip_secret> }}
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black]
+    needs: [shellcheck, pylint, black, clang-format]
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
@@ -252,7 +254,7 @@ on-target-tests-serial-<target_name>:
         target_baudrate: <target_baudrate>
     secrets:
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black, on-target-tests-ssh-<target_name>]
+    needs: [shellcheck, pylint, black, clang-format, on-target-tests-ssh-<target_name>]
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
