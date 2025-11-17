@@ -9,10 +9,12 @@ RUN set -x \
     && apt-get install -y --no-install-recommends \
         black \
         clang-format \
+        clang-tidy \
         fuse-overlayfs \
         iperf3 \
         iputils-ping \
         lrzsz \
+        libmosquitto-dev \
         openssh-server \
         podman \
         pylint \

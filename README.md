@@ -201,6 +201,7 @@ The following requirements are needed to run the static test manually:
 * pylint (On ubuntu, install with `sudo apt install pylint`)
 * black (On ubuntu, install with `sudo apt install black`)
 * clang-format (On ubuntu, install with `sudo apt install clang-format`)
+* clang-tidy (On ubuntu, install with `sudo apt install clang-tidy`)
 
 #### Run the test
 
@@ -211,12 +212,13 @@ $ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/test
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
 $ clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
+$ clang-tidy -warnings-as-errors=*  -checks=readability-*,clang-analyzer-* src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
 ```
 
 ## CI
 
-The CI is configured to run static tests (shellcheck, pylint, black, clang-format) and on
-target tests on each push.
+The CI is configured to run static tests (shellcheck, pylint, black, clang-format,
+clang-tidy) and on target tests on each push.
 
 If you want to add a new target in the CI, add your runner in github settings
 with a label corresponding to the target and modify
@@ -232,7 +234,7 @@ on-target-tests-ssh-<target_name>:
     secrets:
         target_ip: ${{ secrets.<target_ip_secret> }}
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black, clang-format]
+    needs: [shellcheck, pylint, black, clang-format, clang-tidy]
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
@@ -254,7 +256,7 @@ on-target-tests-serial-<target_name>:
         target_baudrate: <target_baudrate>
     secrets:
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black, clang-format, on-target-tests-ssh-<target_name>]
+    needs: [shellcheck, pylint, black, clang-format, clang-tidy, on-target-tests-ssh-<target_name>]
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
