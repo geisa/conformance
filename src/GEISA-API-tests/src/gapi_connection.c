@@ -7,6 +7,7 @@
 
 volatile bool running = true;
 volatile bool isConnected = false;
+#define PORT 1883
 
 int main(int argc, char **argv)
 {
@@ -16,8 +17,8 @@ int main(int argc, char **argv)
 	}
 
 	const char *broker = argv[1];
-	struct mosquitto *mosq;
-	int port = 1883;
+	struct mosquitto *mosq = NULL;
+	int port = PORT;
 
 	mosq = api_communication_init(broker, port);
 	if (!mosq) {

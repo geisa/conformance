@@ -7,32 +7,35 @@
 
 #include "gapi_mosquitto.h"
 
+const int MOSQUITTO_KEEP_ALIVE = 60;
+
 static int sent_mid;
 
-static void handle_signal(int s)
+static void handle_signal(int signal)
 {
-	fprintf(stderr, "Caught signal %d, disconnecting...\n", s);
+	fprintf(stderr, "Caught signal %d, disconnecting...\n", signal);
 	running = false;
 }
 
-static void on_connect(struct mosquitto *mosq, void *obj, int rc)
+static void on_connect(struct mosquitto *mosq, void *obj, int return_code)
 {
 	(void)obj;
-	if (rc == 0) {
+	if (return_code == 0) {
 		fprintf(stdout, "[connected] OK\n");
 		isConnected = true;
 	} else {
-		fprintf(stderr, "[connect] failed, rc=%d\n", rc);
+		fprintf(stderr, "[connect] failed, return_code=%d\n",
+			return_code);
 		running = false;
 		mosquitto_disconnect(mosq);
 	}
 }
 
-static void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
+static void on_disconnect(struct mosquitto *mosq, void *obj, int return_code)
 {
 	(void)obj;
 	(void)mosq;
-	fprintf(stdout, "[disconnected] rc=%d\n", rc);
+	fprintf(stdout, "[disconnected] return_code=%d\n", return_code);
 	isConnected = false;
 }
 
@@ -61,7 +64,7 @@ static void on_message(struct mosquitto *mosq, void *obj,
 struct mosquitto *api_communication_init(const char *broker, int port)
 {
 	struct mosquitto *mosq = NULL;
-	int rc;
+	int return_code = 0;
 
 	mosquitto_lib_init();
 
@@ -81,10 +84,11 @@ struct mosquitto *api_communication_init(const char *broker, int port)
 
 	mosquitto_loop(mosq, -1, 1);
 
-	rc = mosquitto_connect(mosq, broker, port, 60);
-	if (rc != MOSQ_ERR_SUCCESS) {
+	return_code =
+	    mosquitto_connect(mosq, broker, port, MOSQUITTO_KEEP_ALIVE);
+	if (return_code != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Error: could not connect to %s: %s\n", broker,
-			mosquitto_strerror(rc));
+			mosquitto_strerror(return_code));
 		goto destroy;
 	}
 
@@ -106,13 +110,13 @@ void api_communication_deinit(struct mosquitto *mosq)
 
 int api_subscribe(struct mosquitto *mosq, const char *topic)
 {
-	int rc;
+	int return_code = 0;
 
-	rc = mosquitto_subscribe(mosq, NULL, topic, 0);
-	if (rc != MOSQ_ERR_SUCCESS) {
+	return_code = mosquitto_subscribe(mosq, NULL, topic, 0);
+	if (return_code != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Subscribe failed: %s\n",
-			mosquitto_strerror(rc));
-		return rc;
+			mosquitto_strerror(return_code));
+		return return_code;
 	}
 
 	return 0;
@@ -120,13 +124,14 @@ int api_subscribe(struct mosquitto *mosq, const char *topic)
 
 int api_publish(struct mosquitto *mosq, const char *topic, const char *message)
 {
-	int rc;
+	int return_code = 0;
 
-	rc = mosquitto_publish(mosq, &sent_mid, topic, (int)strlen(message),
-			       message, 1, false);
-	if (rc != MOSQ_ERR_SUCCESS) {
-		fprintf(stderr, "Publish failed: %s\n", mosquitto_strerror(rc));
-		return rc;
+	return_code = mosquitto_publish(
+	    mosq, &sent_mid, topic, (int)strlen(message), message, 1, false);
+	if (return_code != MOSQ_ERR_SUCCESS) {
+		fprintf(stderr, "Publish failed: %s\n",
+			mosquitto_strerror(return_code));
+		return return_code;
 	}
 
 	return 0;
