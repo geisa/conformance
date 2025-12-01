@@ -160,11 +160,19 @@ cleanup_api_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
+	local oci_engine=""
 
 	echo ""
 	echo "Cleaning up test files on board"
 	SSH "rm -rf /tmp/GAPI-tests" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
+		exit 1
+	}
+
+	oci_engine=$(verify_oci_engine_on_board "${board_ip}" "${board_user}" "${board_password}")
+
+	SSH "${oci_engine}" rmi localhost/gapi-conformance-tests:latest 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to remove test container from board"
 		exit 1
 	}
 }
