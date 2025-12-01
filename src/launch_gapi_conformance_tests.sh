@@ -8,6 +8,7 @@
 
 RED="\e[31m"
 ENDCOLOR="\e[0m"
+OCI_ENGINE="podman docker"
 declare CONFORMANCE_SSH_ARGS
 declare CONFORMANCE_SCP_ARGS
 
@@ -73,20 +74,45 @@ connect_and_transfer_gapi_with_ssh() {
 
 }
 
+verify_oci_engine_on_board() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+
+	for oci_engine in ${OCI_ENGINE}; do
+		SSH command -v "${oci_engine}" 1>/dev/null 2>&1 && {
+			echo "${oci_engine}"
+			return 0
+		}
+	done
+}
+
 launch_gapi_tests_with_report() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
 	local topdir="$4"
+	local oci_engine=""
 
 	echo ""
 	echo "Launching tests..."
 
-	SSH podman load -i /tmp/GAPI-tests/gapi-conformance-tests.tar 1>/dev/null || {
+	echo ""
+	echo "Verifying OCI engine on board"
+
+	oci_engine=$(verify_oci_engine_on_board "${board_ip}" "${board_user}" "${board_password}")
+
+	if [[ -z "${oci_engine}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} No OCI engine found on board between ${OCI_ENGINE}"
+		exit 1
+	fi
+	echo "Using ${oci_engine} as OCI engine on board"
+
+	SSH "${oci_engine}" load -i /tmp/GAPI-tests/gapi-conformance-tests.tar 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to load test container on board"
 		exit 1
 	}
-	SSH podman run --rm --network host -v /tmp/GAPI-tests/:/reports gapi-conformance-tests:latest
+	SSH "${oci_engine}" run --rm --network host -v /tmp/GAPI-tests/:/reports localhost/gapi-conformance-tests:latest
 	api_test_exit_code=$?
 
 	echo ""
@@ -103,16 +129,28 @@ launch_gapi_tests_without_report() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
+	local oci_engine=""
 
 	echo ""
 	echo "Launching tests..."
 
-	SSH podman load -i /tmp/GAPI-tests/gapi-conformance-tests.tar 1>/dev/null || {
+	echo ""
+	echo "Verifying OCI engine on board"
+
+	oci_engine=$(verify_oci_engine_on_board "${board_ip}" "${board_user}" "${board_password}")
+
+	if [[ -z "${oci_engine}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} No OCI engine found on board between ${OCI_ENGINE}"
+		exit 1
+	fi
+	echo "Using ${oci_engine} as OCI engine on board"
+
+	SSH "${oci_engine}" load -i /tmp/GAPI-tests/gapi-conformance-tests.tar 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to load test container on board"
 		exit 1
 	}
 
-	SSH podman run -t --rm --network host gapi-conformance-tests:latest /etc/cukinia/cukinia /etc/GEISA-API-tests/cukinia.conf
+	SSH "${oci_engine}" run -t --rm --network host localhost/gapi-conformance-tests:latest /etc/cukinia/cukinia /etc/GEISA-API-tests/cukinia.conf
 	api_test_exit_code=$?
 
 	export api_test_exit_code
