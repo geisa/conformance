@@ -25,6 +25,7 @@ RUN set -x \
         python3-pexpect \
         ruby-asciidoctor-pdf \
         shellcheck \
+        squashfs-tools \
         sshpass \
         uidmap \
     && rm -rf /var/lib/apt/lists/

@@ -167,7 +167,7 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 fi
 
 if [[ -z ${NO_GAPI_TESTS} ]]; then
-	create_gapi_test_container "${TOPDIR}"
+	create_gapi_test_squashfs "${TOPDIR}"
 
 	if [[ -n ${BOARD_IP} ]]; then
 		connect_and_transfer_gapi_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
