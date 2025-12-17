@@ -7,6 +7,7 @@
 
 volatile bool running = true;
 volatile bool isConnected = false;
+volatile bool rr_disconnect = false;
 
 int main()
 {

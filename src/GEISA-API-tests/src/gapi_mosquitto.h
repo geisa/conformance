@@ -12,12 +12,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 /**
  * @brief Global variable to control the running state of the MQTT client
  */
 extern volatile bool running;
+
+/**
+ * @brief Global variable to control the request-response loop of the MQTT
+ * client
+ */
+extern volatile bool rr_disconnect;
 
 /**
  * @brief Global variable to indicate the connection state of the MQTT client
@@ -71,5 +78,17 @@ typedef struct {
 	char mqtt_id[MQTT_CONFIG_FIELD_SIZE];
 	char mqtt_password[MQTT_CONFIG_FIELD_SIZE];
 } mqtt_config;
+
+/**
+ * @brief Send a request message and wait for a response on a specified topic
+ *
+ * @param mosq Pointer to the mosquitto struct
+ * @param request_topic The MQTT topic to send the request to
+ * @param message The request message to send
+ * @param response_topic The MQTT topic to listen for the response
+ * @return 0 on success, non-zero on failure
+ */
+int api_request_response(struct mosquitto *mosq, const char *request_topic,
+			 const char *message, const char *response_topic);
 
 #endif // GAPI_MOSQUITTO_H

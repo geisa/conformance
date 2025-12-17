@@ -10,12 +10,15 @@
 const int MOSQUITTO_KEEP_ALIVE = 60;
 enum { LINE_SIZE = 256, BASE_10 = 10 };
 
+const int RR_TIMEOUT_S = 5;
+
 static int sent_mid;
 
 static void handle_signal(int signal)
 {
 	fprintf(stderr, "Caught signal %d, disconnecting...\n", signal);
 	running = false;
+	rr_disconnect = true;
 }
 
 static void on_connect(struct mosquitto *mosq, void *obj, int return_code)
@@ -60,6 +63,7 @@ static void on_message(struct mosquitto *mosq, void *obj,
 	(void)mosq;
 	fprintf(stdout, "[msg] topic=%s payload=%.*s\n", msg->topic,
 		msg->payloadlen, (char *)msg->payload);
+	rr_disconnect = true;
 }
 
 static int read_mqtt_conf_file(mqtt_config *cfg)
@@ -177,5 +181,33 @@ int api_publish(struct mosquitto *mosq, const char *topic, const char *message)
 		return return_code;
 	}
 
+	return 0;
+}
+
+int api_request_response(struct mosquitto *mosq, const char *topic,
+			 const char *message, const char *response_topic)
+{
+	int return_code = 0;
+	time_t start = 0;
+	rr_disconnect = false;
+
+	return_code = api_subscribe(mosq, response_topic);
+	if (return_code != 0) {
+		return return_code;
+	}
+	return_code = api_publish(mosq, topic, message);
+	if (return_code != 0) {
+		return return_code;
+	}
+
+	start = time(NULL);
+	while (!rr_disconnect) {
+		mosquitto_loop(mosq, -1, 1);
+		if (difftime(time(NULL), start) > RR_TIMEOUT_S) {
+			fprintf(stderr, "Request timed out after %d seconds\n",
+				RR_TIMEOUT_S);
+			return -1;
+		}
+	}
 	return 0;
 }
