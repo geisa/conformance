@@ -107,7 +107,7 @@ mount_overlayfs_on_board() {
 	echo ""
 	echo "Mounting overlay filesystem on board"
 
-	SSH mount -t squashfs -o loop /etc/geisa/geisa-application-base-geisa-imx93.rootfs.squashfs /tmp/GAPI-tests/base || {
+	SSH mount -t squashfs -o loop /etc/geisa/*.squashfs /tmp/GAPI-tests/base || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to mount base filesystem on board"
 		exit 1
 	}
