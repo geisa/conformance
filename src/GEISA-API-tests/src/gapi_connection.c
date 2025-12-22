@@ -22,6 +22,12 @@ int main()
 		sleep(1);
 	}
 
+	if (!isConnected) {
+		fprintf(stderr, "Failed to connect to broker\n");
+		api_communication_deinit(mosq);
+		return EXIT_FAILURE;
+	}
+
 	api_communication_deinit(mosq);
 	return EXIT_SUCCESS;
 }
