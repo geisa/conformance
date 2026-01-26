@@ -1,3 +1,5 @@
 reports
 cukinia.tar.gz
 GEISA-LEE-tests.tar.gz
+src/GEISA-API-tests/build_rootfs
+gapi-conformance-tests.squashfs

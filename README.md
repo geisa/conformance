@@ -36,6 +36,10 @@ The automatic test launcher requires the following requirements:
     - python3 (On ubuntu, install with `sudo apt install python3`)
     - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
     - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
+  * For api tests:
+    - podman (On ubuntu, install with `sudo apt install podman`)
+    - qemu-user-static (On ubuntu, install with `sudo apt install qemu-user-static`)
+    - mksquashfs (On ubuntu, install with `sudo apt install squashfs-tools`)
 
 A docker support is also available to launch the tests with a container, it requires:
   - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
@@ -198,6 +202,8 @@ The following requirements are needed to run the static test manually:
 * shellcheck (On ubuntu, install with `sudo apt install shellcheck`)
 * pylint (On ubuntu, install with `sudo apt install pylint`)
 * black (On ubuntu, install with `sudo apt install black`)
+* clang-format (On ubuntu, install with `sudo apt install clang-format`)
+* clang-tidy (On ubuntu, install with `sudo apt install clang-tidy`)
 
 #### Run the test
 
@@ -207,12 +213,14 @@ Run the following command to execute the static test:
 $ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/tests.d/*.sh
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
+$ clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
+$ clang-tidy -warnings-as-errors=*  -checks=readability-*,clang-analyzer-* src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
 ```
 
 ## CI
 
-The CI is configured to run static tests (shellcheck, pylint, black) and on
-target tests on each push.
+The CI is configured to run static tests (shellcheck, pylint, black, clang-format,
+clang-tidy) and on target tests on each push.
 
 If you want to add a new target in the CI, add your runner in github settings
 with a label corresponding to the target and modify
@@ -228,7 +236,7 @@ on-target-tests-ssh-<target_name>:
     secrets:
         target_ip: ${{ secrets.<target_ip_secret> }}
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black]
+    needs: [shellcheck, pylint, black, clang-format, clang-tidy]
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
@@ -250,7 +258,7 @@ on-target-tests-serial-<target_name>:
         target_baudrate: <target_baudrate>
     secrets:
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black, on-target-tests-ssh-<target_name>]
+    needs: [shellcheck, pylint, black, clang-format, clang-tidy, on-target-tests-ssh-<target_name>]
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label

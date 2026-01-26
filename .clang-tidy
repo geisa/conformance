@@ -1,0 +1,2 @@
+Checks:          'readability-*,clang-analyzer-*,cppcoreguidelines-*,modernize-*,-cppcoreguidelines-avoid-non-const-global-variables,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
+WarningsAsErrors: '*'

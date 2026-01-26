@@ -135,10 +135,10 @@ if ! ${NO_REPORTS}; then
 	rm -rf "${TOPDIR}"/reports/*
 fi
 
+BOARD_USER=${BOARD_USER:-root}
+
 if [[ -z ${NO_GLEE_TESTS} ]]; then
 	if [[ -n ${BOARD_IP} ]]; then
-		BOARD_USER=${BOARD_USER:-root}
-
 		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		if ! ${NO_REPORTS}; then
 			launch_glee_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
@@ -151,7 +151,7 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 	else
 		echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
 		args=(--serial "${BOARD_SERIAL}" \
-			--user "${BOARD_USER:-root}" \
+			--user "${BOARD_USER}" \
 			--password "${BOARD_PASSWORD:-}" \
 			--baudrate "${BAUDRATE:-115200}")
 		if ${NO_REPORTS}; then
@@ -167,10 +167,18 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 fi
 
 if [[ -z ${NO_GAPI_TESTS} ]]; then
-	if ! ${NO_REPORTS}; then
-		launch_gapi_tests_with_report "${TOPDIR}"
+	create_gapi_test_squashfs "${TOPDIR}"
+
+	if [[ -n ${BOARD_IP} ]]; then
+		connect_and_transfer_gapi_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		if ! ${NO_REPORTS}; then
+			launch_gapi_tests_with_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		else
+			launch_gapi_tests_without_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+		fi
+		cleanup_api_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 	else
-		launch_gapi_tests_without_report "${TOPDIR}"
+		echo -e "${ORANGE}Warning:${ENDCOLOR} API test through serial is not supported yet."
 	fi
 fi
 
