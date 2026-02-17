@@ -43,6 +43,7 @@ The automatic test launcher requires the following requirements:
 
 A docker support is also available to launch the tests with a container, it requires:
   - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
+  - qemu-user-static to build the container for cross-compilation (On ubuntu, install with `sudo apt install qemu-user-static`)
 
 #### Launch tests
 
