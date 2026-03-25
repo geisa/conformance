@@ -33,6 +33,27 @@ launch_app_without_report() {
     -- /etc/cukinia/cukinia /etc/GEISA-API-tests/cukinia.conf
 }
 
+clean_up() {
+    if mountpoint -q /tmp/GAPI-tests/rootfs; then
+        umount /tmp/GAPI-tests/rootfs || {
+            echo -e "Error: Failed to unmount test filesystem on board"
+            exit 1
+        }
+    fi
+    if mountpoint -q /tmp/GAPI-tests/base; then
+        umount /tmp/GAPI-tests/base || {
+            echo -e "Error: Failed to unmount base filesystem on board"
+            exit 1
+        }
+    fi
+    if mountpoint -q /tmp/GAPI-tests/app; then
+        umount /tmp/GAPI-tests/app || {
+            echo -e "Error: Failed to unmount app filesystem on board"
+            exit 1
+        }
+    fi
+}
+
 case "$1" in
     "report")
         echo "Launching gapi_test_app with report configuration..."
@@ -41,6 +62,10 @@ case "$1" in
     "no-report")
         echo "Launching gapi_test_app with no-report configuration..."
         launch_app_without_report
+        ;;
+    "clean")
+        echo "Cleaning up mounted filesystems and temporary directories..."
+        clean_up
         ;;
     *)
         echo "Unknown argument: $1"

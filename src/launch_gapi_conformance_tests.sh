@@ -91,7 +91,7 @@ connect_and_transfer_gapi_with_ssh() {
 
 	echo ""
 	echo "Cleaning previous test results on board"
-	cleanup_api_ssh "${board_ip}" "${board_user}" "${board_password}"
+	cleanup_api_ssh "${board_ip}" "${board_user}" "${board_password}" "${topdir}"
 
 	SSH mkdir -p /tmp/GAPI-tests/{upper,work,base,app,rootfs} || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create test directory on board"
@@ -157,27 +157,21 @@ cleanup_api_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
+	local topdir="$4"
 
 	echo ""
 	echo "Cleaning up test files on board"
-	if SSH mountpoint -q /tmp/GAPI-tests/rootfs; then
-		SSH "umount /tmp/GAPI-tests/rootfs" || {
-			echo -e "${RED}Error:${ENDCOLOR} Failed to unmount test filesystem on board"
-			exit 1
-		}
-	fi
-	if SSH mountpoint -q /tmp/GAPI-tests/base; then
-		SSH "umount /tmp/GAPI-tests/base" || {
-			echo -e "${RED}Error:${ENDCOLOR} Failed to unmount base filesystem on board"
-			exit 1
-		}
-	fi
-	if SSH mountpoint -q /tmp/GAPI-tests/app; then
-		SSH "umount /tmp/GAPI-tests/app" || {
-			echo -e "${RED}Error:${ENDCOLOR} Failed to unmount app filesystem on board"
-			exit 1
-		}
-	fi
+
+	transfer_launch_gapi_tests_script "${board_ip}" "${board_user}" "${board_password}" "${topdir}" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
+		exit 1
+	}
+
+	SSH "chmod +x /tmp/GAPI-tests/launch_gapi_test_app.sh && /tmp/GAPI-tests/launch_gapi_test_app.sh clean" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
+		exit 1
+	}
+
 	SSH "rm -rf /tmp/GAPI-tests" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
 		exit 1
