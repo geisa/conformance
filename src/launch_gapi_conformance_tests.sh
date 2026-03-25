@@ -21,6 +21,28 @@ SCP() {
 	sshpass -p "${board_password}" scp ${CONFORMANCE_SCP_ARGS} -o StrictHostKeyChecking=no "$@"
 }
 
+transfer_launch_gapi_tests_script() {
+	local board_ip="$1"
+	local board_user="$2"
+	local board_password="$3"
+	local topdir="$4"
+
+	if [[ ! -f "${topdir}"/launch_gapi_test_app.sh ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} No API launching script found. Create a launch_gapi_test_app.sh script (see launch_gapi_test_app.sh.template or read the README)"
+		exit 1
+	fi
+
+	SSH "mkdir -p /tmp/GAPI-tests" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to create test directory on board"
+		exit 1
+	}
+
+	SCP "${topdir}"/launch_gapi_test_app.sh "${board_user}@[${board_ip}]:/tmp/GAPI-tests/launch_gapi_test_app.sh" 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
+		exit 1
+	}
+}
+
 create_gapi_test_squashfs() {
 	local topdir="$1"
 
@@ -93,12 +115,7 @@ launch_gapi_tests_with_report() {
 	echo ""
 	echo "Launching tests..."
 
-	if [[ ! -f "${topdir}"/launch_gapi_test_app.sh ]]; then
-		echo -e "${RED}Error:${ENDCOLOR} No API launching script found. Create a launch_gapi_test_app.sh script (see launch_gapi_test_app.sh.template or read the README)"
-		exit 1
-	fi
-
-	SCP "${topdir}"/launch_gapi_test_app.sh "${board_user}@[${board_ip}]:/tmp/GAPI-tests/launch_gapi_test_app.sh" 1>/dev/null || {
+	transfer_launch_gapi_tests_script "${board_ip}" "${board_user}" "${board_password}" "${topdir}" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
 		exit 1
 	}
@@ -125,12 +142,7 @@ launch_gapi_tests_without_report() {
 	echo ""
 	echo "Launching tests..."
 
-	if [[ ! -f "${topdir}"/launch_gapi_test_app.sh ]]; then
-		echo -e "${RED}Error:${ENDCOLOR} No API launching script found. Create a launch_gapi_test_app.sh script (see launch_gapi_test_app.sh.template or read the README)"
-		exit 1
-	fi
-
-	SCP "${topdir}"/launch_gapi_test_app.sh "${board_user}@[${board_ip}]:/tmp/GAPI-tests/launch_gapi_test_app.sh" 1>/dev/null || {
+	transfer_launch_gapi_tests_script "${board_ip}" "${board_user}" "${board_password}" "${topdir}" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
 		exit 1
 	}
