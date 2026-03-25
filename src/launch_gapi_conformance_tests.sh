@@ -8,8 +8,6 @@
 
 RED="\e[31m"
 ENDCOLOR="\e[0m"
-CONTAINER_ENGINE="lxc-execute"
-LXC_ARGS="-f /etc/lxc/default.conf -s lxc.uts.name=GAPI-tests -s lxc.rootfs.path=dir:/tmp/GAPI-tests/rootfs --share-net 1"
 declare CONFORMANCE_SSH_ARGS
 declare CONFORMANCE_SCP_ARGS
 
@@ -86,65 +84,26 @@ connect_and_transfer_gapi_with_ssh() {
 
 }
 
-verify_container_engine_on_board() {
-	local board_ip="$1"
-	local board_user="$2"
-	local board_password="$3"
-
-	for container_engine in ${CONTAINER_ENGINE}; do
-		SSH command -v "${container_engine}" 1>/dev/null 2>&1 && {
-			echo "${container_engine}"
-			return 0
-		}
-	done
-}
-
-mount_overlayfs_on_board() {
-	local board_ip="$1"
-	local board_user="$2"
-	local board_password="$3"
-
-	echo ""
-	echo "Mounting overlay filesystem on board"
-
-	SSH mount -t squashfs -o loop /etc/geisa/*.squashfs /tmp/GAPI-tests/base || {
-		echo -e "${RED}Error:${ENDCOLOR} Failed to mount base filesystem on board"
-		exit 1
-	}
-	SSH mount -t squashfs -o loop /tmp/GAPI-tests/gapi-conformance-tests.squashfs /tmp/GAPI-tests/app || {
-		echo -e "${RED}Error:${ENDCOLOR} Failed to mount app filesystem on board"
-		exit 1
-	}
-	SSH mount -t overlay overlay -o lowerdir=/tmp/GAPI-tests/base:/tmp/GAPI-tests/app,upperdir=/tmp/GAPI-tests/upper,workdir=/tmp/GAPI-tests/work /tmp/GAPI-tests/rootfs || {
-		echo -e "${RED}Error:${ENDCOLOR} Failed to mount overlay filesystem on board"
-		exit 1
-	}
-}
-
 launch_gapi_tests_with_report() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
 	local topdir="$4"
-	local container_engine=""
 
 	echo ""
 	echo "Launching tests..."
 
-	echo ""
-	echo "Verifying container engine on board"
-
-	container_engine=$(verify_container_engine_on_board "${board_ip}" "${board_user}" "${board_password}")
-
-	if [[ -z "${container_engine}" ]]; then
-		echo -e "${RED}Error:${ENDCOLOR} No container engine found on board between ${CONTAINER_ENGINE}"
+	if [[ ! -f "${topdir}"/launch_gapi_test_app.sh ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} No API launching script found. Create a launch_gapi_test_app.sh script (see launch_gapi_test_app.sh.template or read the README)"
 		exit 1
 	fi
-	echo "Using ${container_engine} as container engine on board"
 
-	mount_overlayfs_on_board "${board_ip}" "${board_user}" "${board_password}"
+	SCP "${topdir}"/launch_gapi_test_app.sh "${board_user}@[${board_ip}]:/tmp/GAPI-tests/launch_gapi_test_app.sh" 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
+		exit 1
+	}
 
-	SSH "${container_engine}" "${LXC_ARGS}" -n GAPI-tests -- /etc/cukinia/cukinia -f junitxml -o /geisa-api-conformance-report.xml /etc/GEISA-API-tests/cukinia.conf
+	SSH "chmod +x /tmp/GAPI-tests/launch_gapi_test_app.sh && /tmp/GAPI-tests/launch_gapi_test_app.sh report"
 	api_test_exit_code=$?
 
 	echo ""
@@ -161,26 +120,22 @@ launch_gapi_tests_without_report() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
-	local container_engine=""
+	local topdir="$4"
 
 	echo ""
 	echo "Launching tests..."
 
-	echo ""
-	echo "Verifying container engine on board"
-
-	container_engine=$(verify_container_engine_on_board "${board_ip}" "${board_user}" "${board_password}")
-
-	if [[ -z "${container_engine}" ]]; then
-		echo -e "${RED}Error:${ENDCOLOR} No container engine found on board between ${CONTAINER_ENGINE}"
+	if [[ ! -f "${topdir}"/launch_gapi_test_app.sh ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} No API launching script found. Create a launch_gapi_test_app.sh script (see launch_gapi_test_app.sh.template or read the README)"
 		exit 1
 	fi
-	echo "Using ${container_engine} as container engine on board"
 
+	SCP "${topdir}"/launch_gapi_test_app.sh "${board_user}@[${board_ip}]:/tmp/GAPI-tests/launch_gapi_test_app.sh" 1>/dev/null || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
+		exit 1
+	}
 
-	mount_overlayfs_on_board "${board_ip}" "${board_user}" "${board_password}"
-
-	SSH "${container_engine}" "${LXC_ARGS}" -n GAPI-tests -- /etc/cukinia/cukinia /etc/GEISA-API-tests/cukinia.conf
+	SSH "chmod +x /tmp/GAPI-tests/launch_gapi_test_app.sh && /tmp/GAPI-tests/launch_gapi_test_app.sh no-report"
 	api_test_exit_code=$?
 
 	export api_test_exit_code
@@ -190,7 +145,6 @@ cleanup_api_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
-	local container_engine=""
 
 	echo ""
 	echo "Cleaning up test files on board"
