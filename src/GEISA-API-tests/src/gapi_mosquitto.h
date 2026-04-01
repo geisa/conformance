@@ -25,13 +25,14 @@ extern volatile bool running;
 extern volatile bool isConnected;
 
 /**
- * @brief Initialize MQTT communication with the specified broker and port
+ * @brief Initialize MQTT communication
+ * This function is reading the mqtt configuration file to get the MQTT broker
+ * address, port, package ID, and package token. It then initializes the
+ * Mosquitto library and creates a new MQTT client instance.
  *
- * @param broker The MQTT broker address
- * @param port The MQTT broker port
  * @return A pointer to the initialized mosquitto struct
  */
-struct mosquitto *api_communication_init(const char *broker, int port);
+struct mosquitto *api_communication_init();
 
 /**
  * @brief Deinitialize MQTT communication and clean up resources
@@ -58,5 +59,17 @@ int api_subscribe(struct mosquitto *mosq, const char *topic);
  * @return 0 on success, non-zero on failure
  */
 int api_publish(struct mosquitto *mosq, const char *topic, const char *message);
+
+#define MQTT_CONFIG_FIELD_SIZE 128
+
+/**
+ * @brief Structure to hold MQTT configuration parameters
+ */
+typedef struct {
+	char mqtt_host[MQTT_CONFIG_FIELD_SIZE];
+	int mqtt_port;
+	char mqtt_id[MQTT_CONFIG_FIELD_SIZE];
+	char mqtt_password[MQTT_CONFIG_FIELD_SIZE];
+} mqtt_config;
 
 #endif // GAPI_MOSQUITTO_H

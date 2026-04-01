@@ -7,29 +7,26 @@
 
 volatile bool running = true;
 volatile bool isConnected = false;
-const int PORT = 1883;
 
 int main(int argc, char **argv)
 {
-	if (argc < 4) {
+	if (argc < 3) {
 		fprintf(stderr,
-			"Usage:\n  %s sub <broker> <topic>\n  %s pub <broker> "
+			"Usage:\n  %s sub <topic>\n  %s pub "
 			"<topic> <message>\n",
 			argv[0], argv[0]);
 		return 1;
 	}
 
 	const char *mode = argv[1];
-	const char *broker = argv[2];
-	const char *topic = argv[3];
-	const char *message = (argc >= 5) ? argv[4] : ""; // NOLINT: arguments
+	const char *topic = argv[2];
+	const char *message = (argc >= 4) ? argv[3] : ""; // NOLINT: arguments
 							  // limit number is not
 							  // a magic number
 	struct mosquitto *mosq = NULL;
-	int port = PORT;
 	int return_code = 0;
 
-	mosq = api_communication_init(broker, port);
+	mosq = api_communication_init();
 	if (!mosq) {
 		return_code = EXIT_FAILURE;
 		goto exit;
@@ -46,9 +43,8 @@ int main(int argc, char **argv)
 			goto disconnect;
 		}
 
-		fprintf(stdout,
-			"Subscribed to %s on %s — waiting for messages...\n",
-			topic, broker);
+		fprintf(stdout, "Subscribed to %s — waiting for messages...\n",
+			topic);
 
 	} else if (strcmp(mode, "pub") == 0) {
 		return_code = api_publish(mosq, topic, message);
@@ -56,8 +52,7 @@ int main(int argc, char **argv)
 			goto disconnect;
 		}
 
-		fprintf(stdout, "Published to %s on %s: %s\n", topic, broker,
-			message);
+		fprintf(stdout, "Published to %s: %s\n", topic, message);
 	} else {
 		fprintf(stderr, "Unknown mode: %s\n", mode);
 		running = false;
