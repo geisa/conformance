@@ -8,11 +8,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       make \
       libmosquitto-dev \
       libc6-dev \
+      libprotobuf-c-dev \
+      pkg-config \
+      protobuf-compiler \
+      protobuf-c-compiler \
       && rm -rf /var/lib/apt/lists/* \
       && rm -rf /var/cache/apt/archives
 
 WORKDIR /geisa-api-conformance-tests
-COPY GEISA-API-tests/src/* /geisa-api-conformance-tests
+COPY GEISA-API-tests/src/ /geisa-api-conformance-tests
 
 RUN make -j"$(nproc)"
 RUN make install
