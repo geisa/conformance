@@ -58,7 +58,8 @@ create_gapi_test_squashfs() {
 	cp "${topdir}"/src/GEISA-API-tests/cukinia.conf "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests/cukinia.conf && \
 	cp -r "${topdir}"/src/GEISA-API-tests/tests.d "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests/tests.d && \
 	cp "${topdir}"/src/GEISA-API-tests/tests_configuration.conf "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests/tests_configuration.conf && \
-	cp "${topdir}"/src/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia/cukinia || {
+	cp "${topdir}"/src/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia/cukinia &&
+	ln -rs "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin/gapi-conformance-tests || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy configuration files for API tests"
 		exit 1
 	}
