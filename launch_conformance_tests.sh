@@ -31,21 +31,35 @@ GEISA Conformance Launch script
 Usage: $0 [options]
 
 Required options:
-  --ip <board_ip>     Specify the IP address of the board to run tests on
+  --ip <board_ip>     				Specify the IP address of the board to run tests on
 or
-  --serial <serial_port>  Specify the serial port of the board to run tests on
+  --serial <serial_port>  			Specify the serial port of the board to run tests on
 
 Optional options:
-  --user <username>   Specify the username for the target device (default: root)
-  --password <password>  Specify the password for the target device (default: empty)
-  --no-reports        Do not generate test reports (only run tests and display results)
-  --baudrate <baudrate> Specify the baudrate for the serial port of the board (default: 115200)
-  --no-glee-tests        Do not run GEISA Linux Execution Environment Conformance tests
-  --no-gadm-tests        Do not run GEISA Application & Device Management Conformance tests
-  --no-gapi-tests        Do not run GEISA Application Programming Interface Conformance tests
-  --help              Show this help message
+  --user <username>   				Specify the username for the target device (default: root)
+  --password <password>  			Specify the password for the target device (default: empty)
+  --no-reports        				Do not generate test reports (only run tests and display results)
+  --baudrate <baudrate> 			Specify the baudrate for the serial port of the board (default: 115200)
+  --no-glee-tests        			Do not run GEISA Linux Execution Environment Conformance tests
+  --no-gadm-tests        			Do not run GEISA Application & Device Management Conformance tests
+  --no-gapi-tests        			Do not run GEISA Application Programming Interface Conformance tests
+  --help              				Show this help message
+
+GADM test options (optional):
+  --host-ip <host_ip>				IP address of the host running the EMS server.
+									If not specified, the host IP is automatically deduced from the active SSH
+									session (i.e. the IP the board sees as the SSH client). In that case the
+									EMS server must run on the same host as the one initiating the SSH connection.
+  --api-endpoint <endpoint>			EMS API endpoint (default: <server-url>/api)
+  --client-name <name>				ADM client endpoint name (default: geisa_adm_client)
+  --client-path <path>				Path to ADM client binary on the board (default: /usr/bin/adm_client)
+  --client-psk-identity <id>		PSK identity for the ADM client (default: <client-name>)
+  --client-psk-value <value>		PSK secret for the ADM client (default: auto-generated hex string of length 16)
+  --client-params <p>				Parameters to start the ADM client (use case: <client-path> <client-params>)
+  --package-path <path>				Path to the ADM package to test (a squashfs file containing the client binary for the current implementation)
+  --server-url <url>				EMS server URL (default: http://localhost:8080)
 EOF
-	exit 1
+    exit 1
 }
 
 while [[ "$#" -gt 0 ]]; do
@@ -92,6 +106,42 @@ while [[ "$#" -gt 0 ]]; do
 			echo -e "${RED}Error:${ENDCOLOR} Baudrate cannot be empty"
 			usage
 		fi
+		shift 2
+		;;
+		--host-ip)
+		HOST_IP="$2"
+		shift 2
+		;;
+		--package-path)
+		PACKAGE_PATH="$2"
+		shift 2
+		;;
+		--server-url)
+		ADM_SERVER_URL="$2"
+		shift 2
+		;;
+		--api-endpoint)
+		ADM_API_ENDPOINT="$2"
+		shift 2
+		;;
+		--client-name)
+		ADM_CLIENT_NAME="$2"
+		shift 2
+		;;
+		--client-path)
+		ADM_CLIENT_PATH="$2"
+		shift 2
+		;;
+		--client-psk-identity)
+		ADM_CLIENT_PSK_IDENTITY="$2"
+		shift 2
+		;;
+		--client-psk-value)
+		ADM_CLIENT_PSK_VALUE="$2"
+		shift 2
+		;;
+		--client-params)
+		ADM_CLIENT_PARAMS="$2"
 		shift 2
 		;;
 		--no-glee-tests)
@@ -184,9 +234,19 @@ fi
 
 if [[ -z ${NO_GADM_TESTS} ]]; then
 	if ! ${NO_REPORTS}; then
-		launch_gadm_tests_with_report "${TOPDIR}"
-	else
-		launch_gadm_tests_without_report "${TOPDIR}"
+		launch_gadm_tests_with_report \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" \
+			"${TOPDIR}" "${HOST_IP}" "${PACKAGE_PATH}" \
+			"${ADM_SERVER_URL}" "${ADM_API_ENDPOINT}" "${ADM_CLIENT_NAME}" \
+			"${ADM_CLIENT_PATH}" "${ADM_CLIENT_PSK_IDENTITY}" \
+			"${ADM_CLIENT_PSK_VALUE}" "${ADM_CLIENT_PARAMS}"
+		else
+		launch_gadm_tests_without_report \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" \
+			"${TOPDIR}" "${HOST_IP}" "${PACKAGE_PATH}" \
+			"${ADM_SERVER_URL}" "${ADM_API_ENDPOINT}" "${ADM_CLIENT_NAME}" \
+			"${ADM_CLIENT_PATH}" "${ADM_CLIENT_PSK_IDENTITY}" \
+			"${ADM_CLIENT_PSK_VALUE}" "${ADM_CLIENT_PARAMS}"
 	fi
 fi
 
