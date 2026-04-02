@@ -8,8 +8,11 @@ RUN set -x \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         black \
+        bsdmainutils \
         clang-format \
         clang-tidy \
+        curl \
+        default-jre-headless \
         fuse-overlayfs \
         iperf3 \
         iputils-ping \
@@ -33,5 +36,5 @@ RUN set -x \
         uidmap \
     && rm -rf /var/lib/apt/lists/
 
-# Remove default dialout group alowing creating it with the host GID
+# Remove default dialout group allowing creating it with the host GID
 RUN groupdel dialout
