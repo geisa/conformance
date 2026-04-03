@@ -4,7 +4,7 @@ BUILDIR ?= build
 PROTOS := $(wildcard schemas/*.proto)
 PB_C := $(PROTOS:schemas/%.proto=$(BUILDIR)/schemas/%.pb-c.c)
 
-objects = gapi_connection
+objects = gapi_connection gapi_discovery
 all: $(objects)
 
 DESTDIR ?= /usr/local/bin
