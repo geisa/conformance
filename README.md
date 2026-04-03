@@ -216,7 +216,9 @@ $ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/test
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
 $ clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
+$ cd src/GEISA-API-tests/src/ && mkdir -p build && protoc --c_out=build schemas/*.proto && cd -
 $ clang-tidy -warnings-as-errors=*  -checks=readability-*,clang-analyzer-* src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
+$ rm -rf src/GEISA-API-tests/src/build
 ```
 
 ## CI
