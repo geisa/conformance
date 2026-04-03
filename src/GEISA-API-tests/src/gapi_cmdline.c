@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 	}
 
 	if (strcmp(mode, "sub") == 0) {
-		return_code = api_subscribe(mosq, topic);
+		return_code = api_subscribe(mosq, topic, 1);
 		if (return_code) {
 			goto disconnect;
 		}
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 			topic);
 
 	} else if (strcmp(mode, "pub") == 0) {
-		return_code = api_publish(mosq, topic, message);
+		return_code = api_publish(mosq, topic, message, 1);
 		if (return_code) {
 			goto disconnect;
 		}
