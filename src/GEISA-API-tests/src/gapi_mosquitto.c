@@ -169,13 +169,13 @@ int api_subscribe(struct mosquitto *mosq, const char *topic, int qos)
 	return 0;
 }
 
-int api_publish(struct mosquitto *mosq, const char *topic, const char *message,
-		int qos)
+int api_publish(struct mosquitto *mosq, const char *topic,
+		const size_t message_size, const uint8_t *message, int qos)
 {
 	int return_code = 0;
 
-	return_code = mosquitto_publish(
-	    mosq, &sent_mid, topic, (int)strlen(message), message, qos, false);
+	return_code = mosquitto_publish(mosq, &sent_mid, topic,
+					(int)message_size, message, qos, false);
 	if (return_code != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Publish failed: %s\n",
 			mosquitto_strerror(return_code));
@@ -186,8 +186,8 @@ int api_publish(struct mosquitto *mosq, const char *topic, const char *message,
 }
 
 int api_request_response(struct mosquitto *mosq, const char *topic,
-			 const char *message, const char *response_topic,
-			 int qos)
+			 const size_t message_size, const uint8_t *message,
+			 const char *response_topic, int qos)
 {
 	int return_code = 0;
 	time_t start = 0;
@@ -197,7 +197,7 @@ int api_request_response(struct mosquitto *mosq, const char *topic,
 	if (return_code != 0) {
 		return return_code;
 	}
-	return_code = api_publish(mosq, topic, message, qos);
+	return_code = api_publish(mosq, topic, message_size, message, qos);
 	if (return_code != 0) {
 		return return_code;
 	}

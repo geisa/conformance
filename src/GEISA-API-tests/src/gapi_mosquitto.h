@@ -63,12 +63,13 @@ int api_subscribe(struct mosquitto *mosq, const char *topic, int qos);
  *
  * @param mosq Pointer to the mosquitto struct
  * @param topic The MQTT topic to publish to
+ * @param message_size The size of the message to publish
  * @param message The message to publish
  * @param qos The Quality of Service level for the message (0, 1, or 2)
  * @return 0 on success, non-zero on failure
  */
-int api_publish(struct mosquitto *mosq, const char *topic, const char *message,
-		int qos);
+int api_publish(struct mosquitto *mosq, const char *topic, size_t message_size,
+		const uint8_t *message, int qos);
 
 #define MQTT_CONFIG_FIELD_SIZE 128
 
@@ -87,13 +88,14 @@ typedef struct {
  *
  * @param mosq Pointer to the mosquitto struct
  * @param request_topic The MQTT topic to send the request to
+ * @param message_size The size of the request message to send
  * @param message The request message to send
  * @param response_topic The MQTT topic to listen for the response
  * @param qos The Quality of Service level for the request message (0, 1, or 2)
  * @return 0 on success, non-zero on failure
  */
 int api_request_response(struct mosquitto *mosq, const char *request_topic,
-			 const char *message, const char *response_topic,
-			 int qos);
+			 size_t message_size, const uint8_t *message,
+			 const char *response_topic, int qos);
 
 #endif // GAPI_MOSQUITTO_H
