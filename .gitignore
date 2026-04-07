@@ -4,3 +4,6 @@ GEISA-LEE-tests.tar.gz
 src/GEISA-API-tests/build_rootfs
 gapi-conformance-tests.squashfs
 launch_gapi_test_app.sh
+data/
+venv/
+Californium3.server.properties
