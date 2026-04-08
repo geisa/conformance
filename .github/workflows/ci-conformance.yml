@@ -76,6 +76,7 @@ jobs:
               uses: actions/checkout@v4
               with:
                   ref: ${{ github.event.pull_request.head.sha || github.sha }}
+                  submodules: true
             - name: Install CQFD and create docker image
               run: |
                   curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v5.8.0/cqfd_5.8.0_all.deb
