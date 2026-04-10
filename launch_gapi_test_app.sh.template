@@ -1,0 +1,74 @@
+#!/bin/sh
+
+mount_overlayfs_on_board() {
+    mount -t squashfs -o loop /etc/geisa/*.squashfs /tmp/GAPI-tests/base || {
+        echo -e "Error: Failed to mount base filesystem on board"
+        exit 1
+    }
+
+    mount -t squashfs -o loop /tmp/GAPI-tests/gapi-conformance-tests.squashfs /tmp/GAPI-tests/app || {
+        echo -e "Error: Failed to mount app filesystem on board"
+        exit 1
+    }
+
+    mount -t overlay overlay -o lowerdir=/tmp/GAPI-tests/base:/tmp/GAPI-tests/app,upperdir=/tmp/GAPI-tests/upper,workdir=/tmp/GAPI-tests/work /tmp/GAPI-tests/rootfs || {
+        echo -e "Error: Failed to mount overlay filesystem on board"
+        exit 1
+    }
+}
+
+launch_app_with_report() {
+    mount_overlayfs_on_board
+
+    lxc-execute -f /etc/lxc/default.conf -s lxc.uts.name=GAPI-tests \
+    -s lxc.rootfs.path=dir:/tmp/GAPI-tests/rootfs --share-net 1 -n GAPI-tests \
+    -- /etc/cukinia/cukinia -f junitxml -o /geisa-api-conformance-report.xml /etc/GEISA-API-tests/cukinia.conf
+}
+
+launch_app_without_report() {
+    mount_overlayfs_on_board
+
+    lxc-execute -f /etc/lxc/default.conf -s lxc.uts.name=GAPI-tests \
+    -s lxc.rootfs.path=dir:/tmp/GAPI-tests/rootfs --share-net 1 -n GAPI-tests \
+    -- /etc/cukinia/cukinia /etc/GEISA-API-tests/cukinia.conf
+}
+
+clean_up() {
+    if mountpoint -q /tmp/GAPI-tests/rootfs; then
+        umount /tmp/GAPI-tests/rootfs || {
+            echo -e "Error: Failed to unmount test filesystem on board"
+            exit 1
+        }
+    fi
+    if mountpoint -q /tmp/GAPI-tests/base; then
+        umount /tmp/GAPI-tests/base || {
+            echo -e "Error: Failed to unmount base filesystem on board"
+            exit 1
+        }
+    fi
+    if mountpoint -q /tmp/GAPI-tests/app; then
+        umount /tmp/GAPI-tests/app || {
+            echo -e "Error: Failed to unmount app filesystem on board"
+            exit 1
+        }
+    fi
+}
+
+case "$1" in
+    "report")
+        echo "Launching gapi_test_app with report configuration..."
+        launch_app_with_report
+        ;;
+    "no-report")
+        echo "Launching gapi_test_app with no-report configuration..."
+        launch_app_without_report
+        ;;
+    "clean")
+        echo "Cleaning up mounted filesystems and temporary directories..."
+        clean_up
+        ;;
+    *)
+        echo "Unknown argument: $1"
+        exit 1
+        ;;
+esac

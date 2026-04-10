@@ -40,6 +40,7 @@ The automatic test launcher requires the following requirements:
     - podman (On ubuntu, install with `sudo apt install podman`)
     - qemu-user-static (On ubuntu, install with `sudo apt install qemu-user-static`)
     - mksquashfs (On ubuntu, install with `sudo apt install squashfs-tools`)
+    - launch_gapi_test_app.sh script see [API Launching script](#api-launching-script) section
 
 A docker support is also available to launch the tests with a container, it requires:
   - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
@@ -269,3 +270,12 @@ you configured).
 * `<target_baudrate>` being the baudrate of your target (optional, default: 115200)
 * `<target_ip_password>` being the name of the secret containing the password
 of your target. (optional, if not provided, no password will be used for the serial connection)
+
+## API Launching script
+
+When executing the API tests using ssh, the `launch_gapi_test_app.sh` script is
+required to launch the test application on the target. This script is
+responsible for setting up the environment and executing the test application.
+Its goal is to provide a generic way to launch the test application on different
+targets and with different configurations.
+A template is available in `launch_gapi_test_app.sh.template`

@@ -28,6 +28,8 @@ jobs:
               with:
                 ref: ${{ github.event.pull_request.head.sha || github.sha }}
                 submodules: true
+            - name: copy template file for launch_gapi_test_app.sh
+              run: cp launch_gapi_test_app.sh.template launch_gapi_test_app.sh
             - name: Run on target tests with report generation using ssh
               run: |
                 cqfd init

@@ -174,9 +174,9 @@ if [[ -z ${NO_GAPI_TESTS} ]]; then
 		if ! ${NO_REPORTS}; then
 			launch_gapi_tests_with_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		else
-			launch_gapi_tests_without_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+			launch_gapi_tests_without_report "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		fi
-		cleanup_api_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+		cleanup_api_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 	else
 		echo -e "${ORANGE}Warning:${ENDCOLOR} API test through serial is not supported yet."
 	fi
