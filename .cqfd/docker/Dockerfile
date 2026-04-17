@@ -15,8 +15,11 @@ RUN set -x \
         iputils-ping \
         lrzsz \
         libmosquitto-dev \
+        libprotobuf-c-dev \
         openssh-server \
         podman \
+        protobuf-compiler \
+        protobuf-c-compiler \
         pylint \
         python3 \
         python3-pip \

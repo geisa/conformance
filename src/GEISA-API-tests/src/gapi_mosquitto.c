@@ -8,6 +8,9 @@
 #include "gapi_mosquitto.h"
 
 const int MOSQUITTO_KEEP_ALIVE = 60;
+enum { LINE_SIZE = 256, BASE_10 = 10 };
+
+const int RR_TIMEOUT_S = 5;
 
 static int sent_mid;
 
@@ -15,6 +18,7 @@ static void handle_signal(int signal)
 {
 	fprintf(stderr, "Caught signal %d, disconnecting...\n", signal);
 	running = false;
+	rr_disconnect = true;
 }
 
 static void on_connect(struct mosquitto *mosq, void *obj, int return_code)
@@ -59,13 +63,55 @@ static void on_message(struct mosquitto *mosq, void *obj,
 	(void)mosq;
 	fprintf(stdout, "[msg] topic=%s payload=%.*s\n", msg->topic,
 		msg->payloadlen, (char *)msg->payload);
+	rr_disconnect = true;
 }
 
-struct mosquitto *api_communication_init(const char *broker, int port)
+static int read_mqtt_conf_file(mqtt_config *cfg)
+{
+	FILE *file = fopen("/etc/geisa/mqtt.conf", "r");
+	if (!file) {
+		fprintf(stderr, "Error: Could not open mqtt.conf\n");
+		return -1;
+	}
+
+	char line[LINE_SIZE];
+
+	while (fgets(line, sizeof(line), file)) {
+		char key[MQTT_CONFIG_FIELD_SIZE] = {0};
+		char value[MQTT_CONFIG_FIELD_SIZE] = {0};
+		if (sscanf(line, "%127[^=]=%127s", key, value) == 2) {
+			if (strcmp(key, "HOST") == 0) {
+				snprintf(cfg->mqtt_host, sizeof(cfg->mqtt_host),
+					 "%s", value);
+			} else if (strcmp(key, "PORT") == 0) {
+				cfg->mqtt_port =
+				    (int)strtol(value, NULL, BASE_10);
+			} else if (strcmp(key, "USERID") == 0) {
+				snprintf(cfg->mqtt_id, sizeof(cfg->mqtt_id),
+					 "%s", value);
+			} else if (strcmp(key, "PASSWORD") == 0) {
+				snprintf(cfg->mqtt_password,
+					 sizeof(cfg->mqtt_password), "%s",
+					 value);
+			}
+		}
+	}
+
+	fclose(file);
+	return 0;
+}
+
+struct mosquitto *api_communication_init()
 {
 	struct mosquitto *mosq = NULL;
 	int return_code = 0;
+	mqtt_config cfg = {0};
 
+	return_code = read_mqtt_conf_file(&cfg);
+	if (return_code != 0) {
+		fprintf(stderr, "Error: Failed to read MQTT configuration\n");
+		return NULL;
+	}
 	mosquitto_lib_init();
 
 	mosq = mosquitto_new(NULL, true, NULL);
@@ -74,6 +120,7 @@ struct mosquitto *api_communication_init(const char *broker, int port)
 		goto cleanup;
 	}
 
+	mosquitto_username_pw_set(mosq, cfg.mqtt_id, cfg.mqtt_password);
 	mosquitto_connect_callback_set(mosq, on_connect);
 	mosquitto_disconnect_callback_set(mosq, on_disconnect);
 	mosquitto_publish_callback_set(mosq, on_publish);
@@ -84,11 +131,11 @@ struct mosquitto *api_communication_init(const char *broker, int port)
 
 	mosquitto_loop(mosq, -1, 1);
 
-	return_code =
-	    mosquitto_connect(mosq, broker, port, MOSQUITTO_KEEP_ALIVE);
+	return_code = mosquitto_connect(mosq, cfg.mqtt_host, cfg.mqtt_port,
+					MOSQUITTO_KEEP_ALIVE);
 	if (return_code != MOSQ_ERR_SUCCESS) {
-		fprintf(stderr, "Error: could not connect to %s: %s\n", broker,
-			mosquitto_strerror(return_code));
+		fprintf(stderr, "Error: could not connect to %s: %s\n",
+			cfg.mqtt_host, mosquitto_strerror(return_code));
 		goto destroy;
 	}
 
@@ -108,11 +155,11 @@ void api_communication_deinit(struct mosquitto *mosq)
 	mosquitto_lib_cleanup();
 }
 
-int api_subscribe(struct mosquitto *mosq, const char *topic)
+int api_subscribe(struct mosquitto *mosq, const char *topic, int qos)
 {
 	int return_code = 0;
 
-	return_code = mosquitto_subscribe(mosq, NULL, topic, 0);
+	return_code = mosquitto_subscribe(mosq, NULL, topic, qos);
 	if (return_code != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Subscribe failed: %s\n",
 			mosquitto_strerror(return_code));
@@ -122,17 +169,47 @@ int api_subscribe(struct mosquitto *mosq, const char *topic)
 	return 0;
 }
 
-int api_publish(struct mosquitto *mosq, const char *topic, const char *message)
+int api_publish(struct mosquitto *mosq, const char *topic,
+		const size_t message_size, const uint8_t *message, int qos)
 {
 	int return_code = 0;
 
-	return_code = mosquitto_publish(
-	    mosq, &sent_mid, topic, (int)strlen(message), message, 1, false);
+	return_code = mosquitto_publish(mosq, &sent_mid, topic,
+					(int)message_size, message, qos, false);
 	if (return_code != MOSQ_ERR_SUCCESS) {
 		fprintf(stderr, "Publish failed: %s\n",
 			mosquitto_strerror(return_code));
 		return return_code;
 	}
 
+	return 0;
+}
+
+int api_request_response(struct mosquitto *mosq, const char *topic,
+			 const size_t message_size, const uint8_t *message,
+			 const char *response_topic, int qos)
+{
+	int return_code = 0;
+	time_t start = 0;
+	rr_disconnect = false;
+
+	return_code = api_subscribe(mosq, response_topic, qos);
+	if (return_code != 0) {
+		return return_code;
+	}
+	return_code = api_publish(mosq, topic, message_size, message, qos);
+	if (return_code != 0) {
+		return return_code;
+	}
+
+	start = time(NULL);
+	while (!rr_disconnect) {
+		mosquitto_loop(mosq, -1, 1);
+		if (difftime(time(NULL), start) > RR_TIMEOUT_S) {
+			fprintf(stderr, "Request timed out after %d seconds\n",
+				RR_TIMEOUT_S);
+			return -1;
+		}
+	}
 	return 0;
 }

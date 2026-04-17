@@ -55,15 +55,22 @@ create_gapi_test_squashfs() {
 	mkdir -p "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests && \
 	mkdir -p "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia && \
 	mkdir -p "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin && \
+	mkdir -p "${topdir}"/src/GEISA-API-tests/build_rootfs/etc && \
+	mkdir -p "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib && \
 	cp "${topdir}"/src/GEISA-API-tests/cukinia.conf "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests/cukinia.conf && \
 	cp -r "${topdir}"/src/GEISA-API-tests/tests.d "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests/tests.d && \
 	cp "${topdir}"/src/GEISA-API-tests/tests_configuration.conf "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/GEISA-API-tests/tests_configuration.conf && \
-	cp "${topdir}"/src/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia/cukinia || {
+	cp "${topdir}"/src/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia/cukinia &&
+	cp "${topdir}"/src/GEISA-API-tests/gapi-conformance-tests "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin/gapi-conformance-tests || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy configuration files for API tests"
 		exit 1
 	}
 
-	podman build -t gapi-conformance-tests:latest --arch arm64 -v "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin:/usr/local/bin/ -f "${topdir}"/src/GEISA-API-tests/Dockerfile "${topdir}"/src || {
+	podman build -t gapi-conformance-tests:latest --arch arm64 \
+		-v "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin:/usr/local/bin/ \
+		-v "${topdir}"/src/GEISA-API-tests/build_rootfs/etc:/usr/local/etc/ \
+		-v "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib:/usr/local/usr/lib \
+		-f "${topdir}"/src/GEISA-API-tests/Dockerfile "${topdir}"/src || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to build API test container"
 		exit 1
 	}

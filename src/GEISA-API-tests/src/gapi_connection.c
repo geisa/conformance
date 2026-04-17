@@ -7,20 +7,13 @@
 
 volatile bool running = true;
 volatile bool isConnected = false;
-#define PORT 1883
+volatile bool rr_disconnect = false;
 
-int main(int argc, char **argv)
+int main()
 {
-	if (argc < 2) {
-		fprintf(stderr, "Usage:\n  %s <broker>\n", argv[0]);
-		return 1;
-	}
-
-	const char *broker = argv[1];
 	struct mosquitto *mosq = NULL;
-	int port = PORT;
 
-	mosq = api_communication_init(broker, port);
+	mosq = api_communication_init();
 	if (!mosq) {
 		return EXIT_FAILURE;
 	}
@@ -28,6 +21,12 @@ int main(int argc, char **argv)
 	while (running && !isConnected) {
 		mosquitto_loop(mosq, -1, 1);
 		sleep(1);
+	}
+
+	if (!isConnected) {
+		fprintf(stderr, "Failed to connect to broker\n");
+		api_communication_deinit(mosq);
+		return EXIT_FAILURE;
 	}
 
 	api_communication_deinit(mosq);

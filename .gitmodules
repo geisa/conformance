@@ -4,3 +4,6 @@
 [submodule "src/test-report-pdf"]
 	path = src/test-report-pdf
 	url = https://github.com/savoirfairelinux/test-report-pdf.git
+[submodule "src/GEISA-API-tests/src/schemas"]
+	path = src/GEISA-API-tests/src/schemas
+	url = https://github.com/geisa/schemas.git
