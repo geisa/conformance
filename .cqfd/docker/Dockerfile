@@ -15,11 +15,10 @@ RUN set -x \
         iputils-ping \
         lrzsz \
         libmosquitto-dev \
-        libprotobuf-c-dev \
+        libnanopb-dev \
         openssh-server \
         podman \
         protobuf-compiler \
-        protobuf-c-compiler \
         pylint \
         python3 \
         python3-pip \
@@ -35,3 +34,6 @@ RUN set -x \
 
 # Remove default dialout group alowing creating it with the host GID
 RUN groupdel dialout
+
+RUN pip3 install --no-cache-dir --break-system-packages \
+      nanopb
