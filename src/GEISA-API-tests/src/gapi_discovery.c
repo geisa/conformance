@@ -13,6 +13,58 @@ volatile bool running = true;
 volatile bool isConnected = false;
 volatile bool rr_disconnect = false;
 
+static void check_geisa_status_message(struct mosquitto *mosq, void *obj,
+				       const struct mosquitto_message *msg)
+{
+	GeisaPlatformDiscovery_Rsp response =
+	    GeisaPlatformDiscovery_Rsp_init_default;
+	(void)mosq;
+	int *test_result = obj;
+	pb_istream_t istream;
+	bool status = false;
+
+	*test_result = EXIT_SUCCESS;
+
+	istream = pb_istream_from_buffer(msg->payload, msg->payloadlen);
+	status =
+	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
+
+	if (!status) {
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
+		*test_result = EXIT_FAILURE;
+		goto disconnect;
+	}
+
+	if (response.has_status == false) {
+		fprintf(stderr,
+			"[Discovery] Error: platform discovery response "
+			"missing status message\n");
+		*test_result = EXIT_FAILURE;
+		goto disconnect;
+	}
+
+	if (response.status.code != GeisaStatusCode_GEISA_STATUS_SUCCESS) {
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: geisa status response not success\n");
+		*test_result = EXIT_FAILURE;
+	}
+
+	if (!response.status.message || !response.status.message[0]) {
+		fprintf(stderr,
+			"[Discovery] Error: geisa status response missing "
+			"message information\n");
+		*test_result = EXIT_FAILURE;
+	}
+
+disconnect:
+	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
+	printf("[Discovery] geisa test_result: %d\n", *test_result);
+	rr_disconnect = true;
+}
+
 static void check_discovery_geisa_message(struct mosquitto *mosq, void *obj,
 					  const struct mosquitto_message *msg)
 {
@@ -452,6 +504,7 @@ int main(int argc, char *argv[])
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <callback_type>\n", argv[0]);
 		fprintf(stderr, "callback_type available:\n"
+				"* status\n"
 				"* geisa\n"
 				"* device \n"
 				"* operator \n"
@@ -468,7 +521,10 @@ int main(int argc, char *argv[])
 		goto exit;
 	}
 
-	if (strcmp(argv[1], "geisa") == 0) {
+	if (strcmp(argv[1], "status") == 0) {
+		mosquitto_message_callback_set(mosq,
+					       check_geisa_status_message);
+	} else if (strcmp(argv[1], "geisa") == 0) {
 		mosquitto_message_callback_set(mosq,
 					       check_discovery_geisa_message);
 	} else if (strcmp(argv[1], "device") == 0) {
