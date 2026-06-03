@@ -488,6 +488,32 @@ static void check_discovery_network_message(struct mosquitto *mosq, void *obj,
 		*test_result = EXIT_FAILURE;
 	}
 
+	if (response.network.interfaces_count == 0) {
+		goto disconnect;
+	}
+
+	if (response.network.interfaces == NULL) {
+		fprintf(stderr,
+			"[Discovery] Error: platform discovery response "
+			"missing network interfaces information\n");
+		*test_result = EXIT_FAILURE;
+		goto disconnect;
+	}
+
+	size_t loop_index = 0;
+	for (loop_index = 0; loop_index < response.network.interfaces_count;
+	     loop_index++) {
+		if (!response.network.interfaces[loop_index].interface_id[0]) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response "
+			    "missing network interface number %ld "
+			    "interface_id information\n",
+			    loop_index);
+			*test_result = EXIT_FAILURE;
+		}
+	}
+
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
 	printf("[Discovery] network test_result: %d\n", *test_result);
