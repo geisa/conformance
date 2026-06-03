@@ -4,7 +4,10 @@
  * @copyright Copyright (C) 2026 Southern California Edison
  */
 #include "gapi_mosquitto.h"
-#include "schemas/metered_quantities.pb-c.h"
+#include "pb.h"
+#include "pb_decode.h"
+#include "pb_encode.h"
+#include "schemas/metered_quantities.pb.h"
 
 volatile bool running = true;
 volatile bool isConnected = false;
@@ -14,51 +17,55 @@ const int TIMEOUT_S = 5;
 static void check_instantaneous_message(struct mosquitto *mosq, void *obj,
 					const struct mosquitto_message *msg)
 {
-	GeisaInstantaneousQuantities *response = NULL;
+	GeisaInstantaneousQuantities response =
+	    GeisaInstantaneousQuantities_init_default;
 	(void)mosq;
 	int *test_result = obj;
+	pb_istream_t istream;
+	bool status = false;
 
 	*test_result = EXIT_SUCCESS;
 
-	response = geisa_instantaneous_quantities__unpack(
-	    NULL, msg->payloadlen, (uint8_t *)msg->payload);
+	istream = pb_istream_from_buffer(msg->payload, msg->payloadlen);
+	status =
+	    pb_decode(&istream, GeisaInstantaneousQuantities_fields, &response);
 
-	if (response == NULL) {
+	if (!status) {
 		fprintf(
 		    stderr,
-		    "[Instantaneous] Error unpacking instantaneous response\n");
+		    "[Instantaneous] Error decoding instantaneous response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
-	if (response->phase_a == NULL) {
+	if (response.has_phase_A == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_A message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
-	if (response->phase_b == NULL) {
+	if (response.has_phase_B == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_B message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
-	if (response->phase_c == NULL) {
+	if (response.has_phase_C == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_C message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
-	if (response->phase_n == NULL) {
+	if (response.has_phase_N == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_N message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
-	if (response->other == NULL) {
+	if (response.has_other == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing other message\n");
 		*test_result = EXIT_FAILURE;
@@ -66,8 +73,7 @@ static void check_instantaneous_message(struct mosquitto *mosq, void *obj,
 	}
 
 disconnect:
-	geisa_instantaneous_quantities__free_unpacked(response, NULL);
-
+	pb_release(GeisaInstantaneousQuantities_fields, &response);
 	printf("[Instantaneous] test_result: %d\n", *test_result);
 	running = false;
 }
