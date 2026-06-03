@@ -575,6 +575,24 @@ check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 					loop_index);
 				*test_result = EXIT_FAILURE;
 			}
+			uint32_t total_channel_count =
+			    response.waveform.streams[loop_index]
+				.num_voltage_ch +
+			    response.waveform.streams[loop_index]
+				.num_current_ch +
+			    response.waveform.streams[loop_index].num_other_ch;
+			if (total_channel_count !=
+			    response.waveform.streams[loop_index]
+				.total_channel_count) {
+				fprintf(stderr,
+					"[Discovery] Error: platform discovery "
+					"response stream number %ld total "
+					"channel count does not equal sum of "
+					"voltage, current, and other channel "
+					"counts\n",
+					loop_index);
+				*test_result = EXIT_FAILURE;
+			}
 		}
 	}
 
