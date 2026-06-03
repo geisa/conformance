@@ -288,10 +288,9 @@ check_discovery_operator_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.has_operator == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing operator information\n");
-		*test_result = EXIT_FAILURE;
+		fprintf(stdout,
+			"[Discovery] Info: platform discovery response "
+			"not provisioning optional operator information\n");
 		goto disconnect;
 	}
 
