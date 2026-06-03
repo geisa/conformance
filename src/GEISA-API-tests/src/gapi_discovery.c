@@ -398,10 +398,58 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.has_sensor == false) {
+		fprintf(stdout,
+			"[Discovery] Info: platform discovery response "
+			"not provisioning optional sensor information\n");
+		goto disconnect;
+	}
+
+	if (response.sensor.sensors_count == 0) {
+		goto disconnect;
+	}
+
+	if (response.sensor.sensors == NULL) {
 		fprintf(stderr,
 			"[Discovery] Error: platform discovery response "
-			"missing sensor information\n");
+			"missing sensors information\n");
 		*test_result = EXIT_FAILURE;
+		goto disconnect;
+	}
+
+	size_t loop_index = 0;
+	for (loop_index = 0; loop_index < response.sensor.sensors_count;
+	     loop_index++) {
+		if (!response.sensor.sensors[loop_index].sensor_id[0]) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response "
+			    "missing sensor number %ld sensor_id "
+			    "information\n",
+			    loop_index);
+			*test_result = EXIT_FAILURE;
+		}
+
+		if (!response.sensor.sensors[loop_index].unit[0]) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response "
+			    "missing sensor number %ld unit information\n",
+			    loop_index);
+			*test_result = EXIT_FAILURE;
+		}
+
+		if (response.sensor.sensors[loop_index].sensor_type ==
+		    GeisaSensorType_GEISA_SENSOR_TYPE_CUSTOM) {
+			if (!response.sensor.sensors[loop_index]
+				 .custom_sensor_type[0]) {
+				fprintf(stderr,
+					"[Discovery] Error: platform discovery "
+					"response missing sensor number %ld "
+					"custom sensor type information\n",
+					loop_index);
+				*test_result = EXIT_FAILURE;
+			}
+		}
 	}
 
 disconnect:
