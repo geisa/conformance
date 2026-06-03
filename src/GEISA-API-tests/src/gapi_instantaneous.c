@@ -42,34 +42,29 @@ static void check_instantaneous_message(struct mosquitto *mosq, void *obj,
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_A message\n");
 		*test_result = EXIT_FAILURE;
-		goto disconnect;
 	}
 
 	if (response.has_phase_B == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_B message\n");
 		*test_result = EXIT_FAILURE;
-		goto disconnect;
 	}
 
 	if (response.has_phase_C == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_C message\n");
 		*test_result = EXIT_FAILURE;
-		goto disconnect;
 	}
 
 	if (response.has_phase_N == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing phase_N message\n");
 		*test_result = EXIT_FAILURE;
-		goto disconnect;
 	}
 	if (response.has_other == false) {
 		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
 				"missing other message\n");
 		*test_result = EXIT_FAILURE;
-		goto disconnect;
 	}
 
 disconnect:
