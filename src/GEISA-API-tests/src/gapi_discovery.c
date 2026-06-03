@@ -338,11 +338,33 @@ check_discovery_metrology_geisa_message(struct mosquitto *mosq, void *obj,
 		goto disconnect;
 	}
 
-	if (response.has_metrology == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing metrology information\n");
-		*test_result = EXIT_FAILURE;
+	if (response.device.top_module.type ==
+	    GeisaPlatformDiscovery_DeviceType_TYPE_ELECTRIC_METER) {
+		if (response.has_metrology == false) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response "
+			    "missing metrology information (Required for Meter "
+			    "type devices)\n");
+			*test_result = EXIT_FAILURE;
+			goto disconnect;
+		}
+
+		if (!response.metrology.meter_rating_class[0]) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response "
+			    "missing meter rating class information\n");
+			*test_result = EXIT_FAILURE;
+		}
+
+		if (!response.metrology.meter_form[0]) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response "
+			    "missing meter form information\n");
+			*test_result = EXIT_FAILURE;
+		}
 	}
 
 disconnect:
