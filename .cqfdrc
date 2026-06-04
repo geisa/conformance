@@ -6,8 +6,8 @@ name='tests'
 command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh \
 && pylint src/launch_glee_conformance_tests_serial.py && black --check --diff src/launch_glee_conformance_tests_serial.py \
 && clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h \
-&& cd src/GEISA-API-tests/src/ && mkdir -p build && protoc --c_out=build schemas/*.proto && cd - \
-&& clang-tidy src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h -- -I src/GEISA-API-tests/src/build \
+&& cd src/GEISA-API-tests/src/ && mkdir -p build/schemas && protoc --nanopb_out=build/schemas schemas/*.proto -I schemas --nanopb_opt='-Inanopb_options' && cd - \
+&& clang-tidy src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h -- -I src/GEISA-API-tests/src/build -I src/GEISA-API-tests/src/nanopb \
 && rm -rf src/GEISA-API-tests/src/build'
 user_extra_groups='dialout tty'
 
@@ -27,6 +27,6 @@ command='black --check --diff src/launch_glee_conformance_tests_serial.py'
 command='clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h'
 
 [clang-tidy]
-command='cd src/GEISA-API-tests/src/ && mkdir -p build && protoc --c_out=build schemas/*.proto && cd - \
-&& clang-tidy src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h -- -I src/GEISA-API-tests/src/build \
+command='cd src/GEISA-API-tests/src/ && mkdir -p build/schemas && protoc --nanopb_out=build/schemas schemas/*.proto -I schemas --nanopb_opt='-Inanopb_options' && cd - \
+&& clang-tidy src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h -- -I src/GEISA-API-tests/src/build -I src/GEISA-API-tests/src/nanopb \
 && rm -rf src/GEISA-API-tests/src/build'

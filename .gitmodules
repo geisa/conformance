@@ -7,3 +7,6 @@
 [submodule "src/GEISA-API-tests/src/schemas"]
 	path = src/GEISA-API-tests/src/schemas
 	url = https://github.com/geisa/schemas.git
+[submodule "src/GEISA-API-tests/src/nanopb"]
+	path = src/GEISA-API-tests/src/nanopb
+	url = https://github.com/nanopb/nanopb.git

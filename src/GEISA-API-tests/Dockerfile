@@ -8,10 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       make \
       libmosquitto-dev \
       libc6-dev \
-      libprotobuf-c-dev \
-      pkg-config \
+      libnanopb-dev \
       protobuf-compiler \
-      protobuf-c-compiler
+      python3-pip
+
+RUN pip3 install --no-cache-dir --break-system-packages \
+      nanopb
 
 WORKDIR /geisa-api-conformance-tests
 COPY GEISA-API-tests/src/ /geisa-api-conformance-tests
@@ -22,8 +24,6 @@ RUN make install
 # Install runtime dependencies of the application
 RUN apt-get download libc6 \
       && dpkg-deb -x libc6_*.deb /usr/local/ \
-      && apt-get download libprotobuf-c1 \
-      && dpkg-deb -x libprotobuf-c1_*.deb /usr/local/ \
       && rm -f *.deb \
       && rm -rf /var/lib/apt/lists/* \
       && rm -rf /var/cache/apt/archives
