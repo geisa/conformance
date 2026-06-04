@@ -3,11 +3,10 @@
  * @brief Test discovery API messages
  * @copyright Copyright (C) 2026 Southern California Edison
  */
-#include "gapi_mosquitto.h"
+#include "gapi_discovery.h"
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
-#include "schemas/discovery.pb.h"
 
 volatile bool running = true;
 volatile bool isConnected = false;
@@ -604,15 +603,9 @@ disconnect:
 
 int main(int argc, char *argv[])
 {
-	GeisaPlatformDiscovery_Req request =
-	    GeisaPlatformDiscovery_Req_init_default;
 	struct mosquitto *mosq = NULL;
-	uint8_t *message = NULL;
-	size_t encoded_size = 0;
-	pb_ostream_t ostream;
 	int return_code = 0;
 	int test_result = 0;
-	bool status = false;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <callback_type>\n", argv[0]);
@@ -677,39 +670,7 @@ int main(int argc, char *argv[])
 		goto disconnect;
 	}
 
-	status = pb_get_encoded_size(
-	    &encoded_size, GeisaPlatformDiscovery_Req_fields, &request);
-	if (!status) {
-		fprintf(stderr, "[Discovery] Error calculating encoded size for"
-				"platform discovery request\n");
-		return_code = EXIT_FAILURE;
-		goto disconnect;
-	}
-
-	message = malloc(encoded_size);
-	if (message == NULL) {
-		fprintf(stderr, "[Discovery] Error allocating memory for "
-				"platform discovery request\n");
-		return_code = EXIT_FAILURE;
-		goto disconnect;
-	}
-	ostream = pb_ostream_from_buffer(message, encoded_size);
-	status =
-	    pb_encode(&ostream, GeisaPlatformDiscovery_Req_fields, &request);
-	if (!status) {
-		fprintf(stderr, "[Discovery] Error encoding platform discovery "
-				"request\n");
-		return_code = EXIT_FAILURE;
-		free(message);
-		goto disconnect;
-	}
-	return_code = api_request_response(
-	    mosq, "geisa/api/platform/discovery/req/gapi-conformance-tests",
-	    encoded_size, message,
-	    "geisa/api/platform/discovery/rsp/gapi-conformance-tests", 1);
-
-	free(message);
-	pb_release(GeisaPlatformDiscovery_Req_fields, &request);
+	return_code = send_discovery_request(mosq);
 
 disconnect:
 	api_communication_deinit(mosq);
