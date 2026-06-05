@@ -67,11 +67,19 @@ create_gapi_test_squashfs() {
 	}
 
 	podman build -t gapi-conformance-tests:latest --arch arm64 \
-		-v "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin:/usr/local/bin/ \
-		-v "${topdir}"/src/GEISA-API-tests/build_rootfs/etc:/usr/local/etc/ \
-		-v "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib:/usr/local/usr/lib \
 		-f "${topdir}"/src/GEISA-API-tests/Dockerfile "${topdir}"/src || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to build API test container"
+		exit 1
+	}
+	podman create --replace --name gapi-conformance-tests-container gapi-conformance-tests:latest || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to create API test container"
+		exit 1
+	}
+	# shellcheck disable=SC2015
+	podman cp gapi-conformance-tests-container:/usr/local/bin/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin &&
+	podman cp gapi-conformance-tests-container:/usr/local/etc/. "${topdir}"/src/GEISA-API-tests/build_rootfs/etc &&
+	podman cp gapi-conformance-tests-container:/usr/local/usr/lib/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to copy API test container artifacts"
 		exit 1
 	}
 

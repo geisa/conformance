@@ -6,14 +6,11 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       gcc \
       make \
+      nanopb \
       libmosquitto-dev \
       libc6-dev \
       libnanopb-dev \
-      protobuf-compiler \
-      python3-pip
-
-RUN pip3 install --no-cache-dir --break-system-packages \
-      nanopb
+      protobuf-compiler
 
 WORKDIR /geisa-api-conformance-tests
 COPY GEISA-API-tests/src/ /geisa-api-conformance-tests

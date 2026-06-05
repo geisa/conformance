@@ -2,6 +2,11 @@
 
 FROM ubuntu:24.04
 
+ARG USER
+ARG UID
+ARG GID
+ARG HOME
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -x \
@@ -37,3 +42,9 @@ RUN groupdel dialout
 
 RUN pip3 install --no-cache-dir --break-system-packages \
       nanopb
+
+RUN groupadd -o -g "${GID}" "${USER}" \
+    && useradd -oN -u "${UID}" -g "${GID}" -d "${HOME}" -s /bin/bash "${USER}" \
+    && mkdir -p "${HOME}/.local/share/containers" \
+    && chown -R "${UID}":"${GID}" "${HOME}"/.local \
+    && userdel "${USER}"
