@@ -12,6 +12,15 @@ volatile bool running = true;
 volatile bool isConnected = false;
 volatile bool rr_disconnect = false;
 
+/**
+ * @brief Callback for geisa status response message, checks for successful
+ * status code and presence of status message information
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing geisa status response
+ */
 static void check_geisa_status_message(struct mosquitto *mosq, void *obj,
 				       const struct mosquitto_message *msg)
 {
@@ -64,6 +73,15 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Callback for geisa information response message, checks for presence
+ * of geisa information and pillar api support
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing geisa information response
+ */
 static void check_discovery_geisa_message(struct mosquitto *mosq, void *obj,
 					  const struct mosquitto_message *msg)
 {
@@ -108,6 +126,14 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Checks the top module information in the device message of the
+ * platform discovery response
+ *
+ * @param top_module The top module information to check
+ * @param test_result Pointer to the test result variable to set to failure if
+ * any checks fail
+ */
 static void check_device_top_module(GeisaPlatformDiscovery_Module top_module,
 				    int *test_result)
 {
@@ -147,6 +173,15 @@ static void check_device_top_module(GeisaPlatformDiscovery_Module top_module,
 	}
 }
 
+/**
+ * @brief Checks the sub module information in the device message of the
+ * platform discovery response
+ *
+ * @param sub_module The array of sub module information to check
+ * @param sub_module_count The number of sub modules in the array
+ * @param test_result Pointer to the test result variable to set to failure if
+ * any checks fail
+ */
 static void check_device_sub_modules(GeisaPlatformDiscovery_Module *sub_module,
 				     size_t sub_module_count, int *test_result)
 {
@@ -212,6 +247,17 @@ static void check_device_sub_modules(GeisaPlatformDiscovery_Module *sub_module,
 	}
 }
 
+/**
+ * @brief Callback for device information response message, checks for presence
+ * of device information and validates required fields in top module and sub
+ * modules
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing device information
+ * response
+ */
 static void check_discovery_device_message(struct mosquitto *mosq, void *obj,
 					   const struct mosquitto_message *msg)
 {
@@ -262,6 +308,17 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Callback for operator information response message, checks for
+ * presence of operator information and validates required fields if operator
+ * information is present
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing operator information
+ * response
+ */
 static void
 check_discovery_operator_message(struct mosquitto *mosq, void *obj,
 				 const struct mosquitto_message *msg)
@@ -313,6 +370,17 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Callback for metrology information response message, checks for
+ * presence of metrology information if device type is electric meter and
+ * validates required fields if metrology information is present
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing metrology information
+ * response
+ */
 static void
 check_discovery_metrology_geisa_message(struct mosquitto *mosq, void *obj,
 					const struct mosquitto_message *msg)
@@ -372,6 +440,17 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Callback for sensor information response message, checks for presence
+ * of sensor information and validates required fields if sensor information is
+ * present
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing sensor information
+ * response
+ */
 static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 					   const struct mosquitto_message *msg)
 {
@@ -457,6 +536,17 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Callback for network information response message, checks for presence
+ * of network information and validates required fields if network information
+ * is present
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing network information
+ * response
+ */
 static void check_discovery_network_message(struct mosquitto *mosq, void *obj,
 					    const struct mosquitto_message *msg)
 {
@@ -519,6 +609,17 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Callback for waveform information response message, checks for
+ * presence of waveform information and validates required fields if waveform
+ * information is present
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj pointer to test result variable to set to failure if any checks
+ * fail
+ * @param msg pointer to mosquitto message containing waveform information
+ * response
+ */
 static void
 check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 				 const struct mosquitto_message *msg)
@@ -601,6 +702,17 @@ disconnect:
 	rr_disconnect = true;
 }
 
+/**
+ * @brief Main function for discovery API tests, initializes MQTT communication,
+ * sets appropriate message callback based on command line argument, sends
+ * discovery request, and processes responses until test completion or failure
+ *
+ * @param argc Argument count from command line
+ * @param argv Argument vector from command line, expects one argument
+ * specifying the callback type to test
+ * @return EXIT_SUCCESS if all tests pass, EXIT_FAILURE if any test fails or if
+ * there is an error in setup
+ */
 int main(int argc, char *argv[])
 {
 	struct mosquitto *mosq = NULL;
