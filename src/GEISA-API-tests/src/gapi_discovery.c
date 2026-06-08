@@ -46,9 +46,9 @@ static void check_geisa_status_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.has_status == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing status message\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing status message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
@@ -61,9 +61,9 @@ static void check_geisa_status_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (!response.status.message || !response.status.message[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: geisa status response missing "
-			"message information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: geisa status response missing message information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
@@ -99,24 +99,25 @@ static void check_discovery_geisa_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.has_geisa == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing geisa message\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing geisa message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.geisa.pillar_api == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing pillar api could not be false\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing pillar api could not be false\n");
 		*test_result = EXIT_FAILURE;
 	}
 
@@ -138,37 +139,37 @@ static void check_device_top_module(GeisaPlatformDiscovery_Module top_module,
 				    int *test_result)
 {
 	if (!top_module.manufacturer[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing top module manufacturer information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing top module manufacturer information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
 	if (!top_module.model[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing top module model information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing top module model information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
 	if (!top_module.serial_number[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing top module serial number information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing top module serial number information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
 	if (!top_module.hw_revision[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing top module hardware revision information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing top module hardware revision information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
 	if (!top_module.fw_revision[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing top module firmware revision information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing top module firmware revision information\n");
 		*test_result = EXIT_FAILURE;
 	}
 }
@@ -190,9 +191,9 @@ static void check_device_sub_modules(GeisaPlatformDiscovery_Module *sub_module,
 	}
 
 	if (sub_module == NULL) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing sub module information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing sub module information\n");
 		*test_result = EXIT_FAILURE;
 		return;
 	}
@@ -202,45 +203,35 @@ static void check_device_sub_modules(GeisaPlatformDiscovery_Module *sub_module,
 		if (!sub_module[loop_index].manufacturer[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sub module number %ld manufacturer "
-			    "information\n",
+			    "[Discovery] Error: platform discovery response missing sub module number %ld manufacturer information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
 		if (!sub_module[loop_index].model[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sub module number %ld model "
-			    "information\n",
+			    "[Discovery] Error: platform discovery response missing sub module number %ld model information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
 		if (!sub_module[loop_index].serial_number[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sub module number %ld serial number "
-			    "information\n",
+			    "[Discovery] Error: platform discovery response missing sub module number %ld serial number information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
 		if (!sub_module[loop_index].hw_revision[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sub module number %ld hardware "
-			    "revision information\n",
+			    "[Discovery] Error: platform discovery response missing sub module number %ld hardware revision information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
 		if (!sub_module[loop_index].fw_revision[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sub module number %ld firmware "
-			    "revision information\n",
+			    "[Discovery] Error: platform discovery response missing sub module number %ld firmware revision information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
@@ -275,24 +266,25 @@ static void check_discovery_device_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.has_device == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing device message\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing device message\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.device.has_top_module == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing device top module information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing device top module information\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
@@ -337,30 +329,31 @@ check_discovery_operator_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.has_operator == false) {
-		fprintf(stdout,
-			"[Discovery] Info: platform discovery response "
-			"not provisioning optional operator information\n");
+		fprintf(
+		    stdout,
+		    "[Discovery] Info: platform discovery response not provisioning optional operator information\n");
 		goto disconnect;
 	}
 
 	if (!response.operator.operator_name[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing operator name information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing operator name information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
 	if (!response.operator.operator_identifier[0]) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing operator identifier information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing operator identifier information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
@@ -399,8 +392,9 @@ check_discovery_metrology_geisa_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
@@ -410,9 +404,7 @@ check_discovery_metrology_geisa_message(struct mosquitto *mosq, void *obj,
 		if (response.has_metrology == false) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing metrology information (Required for Meter "
-			    "type devices)\n");
+			    "[Discovery] Error: platform discovery response missing metrology information (Required for Meter type devices)\n");
 			*test_result = EXIT_FAILURE;
 			goto disconnect;
 		}
@@ -420,16 +412,14 @@ check_discovery_metrology_geisa_message(struct mosquitto *mosq, void *obj,
 		if (!response.metrology.meter_rating_class[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing meter rating class information\n");
+			    "[Discovery] Error: platform discovery response missing meter rating class information\n");
 			*test_result = EXIT_FAILURE;
 		}
 
 		if (!response.metrology.meter_form[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing meter form information\n");
+			    "[Discovery] Error: platform discovery response missing meter form information\n");
 			*test_result = EXIT_FAILURE;
 		}
 	}
@@ -468,17 +458,18 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		rr_disconnect = true;
 		goto disconnect;
 	}
 
 	if (response.has_sensor == false) {
-		fprintf(stdout,
-			"[Discovery] Info: platform discovery response "
-			"not provisioning optional sensor information\n");
+		fprintf(
+		    stdout,
+		    "[Discovery] Info: platform discovery response not provisioning optional sensor information\n");
 		goto disconnect;
 	}
 
@@ -487,9 +478,9 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.sensor.sensors == NULL) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing sensors information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing sensors information\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
@@ -500,9 +491,7 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 		if (!response.sensor.sensors[loop_index].sensor_id[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sensor number %ld sensor_id "
-			    "information\n",
+			    "[Discovery] Error: platform discovery response missing sensor number %ld sensor_id information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
@@ -510,8 +499,7 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 		if (!response.sensor.sensors[loop_index].unit[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing sensor number %ld unit information\n",
+			    "[Discovery] Error: platform discovery response missing sensor number %ld unit information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
@@ -520,11 +508,10 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 		    GeisaSensorType_GEISA_SENSOR_TYPE_CUSTOM) {
 			if (!response.sensor.sensors[loop_index]
 				 .custom_sensor_type[0]) {
-				fprintf(stderr,
-					"[Discovery] Error: platform discovery "
-					"response missing sensor number %ld "
-					"custom sensor type information\n",
-					loop_index);
+				fprintf(
+				    stderr,
+				    "[Discovery] Error: platform discovery response missing sensor number %ld custom sensor type information\n",
+				    loop_index);
 				*test_result = EXIT_FAILURE;
 			}
 		}
@@ -564,16 +551,17 @@ static void check_discovery_network_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.has_network == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing network information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing network information\n");
 		*test_result = EXIT_FAILURE;
 	}
 
@@ -582,9 +570,9 @@ static void check_discovery_network_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.network.interfaces == NULL) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing network interfaces information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing network interfaces information\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
@@ -595,9 +583,7 @@ static void check_discovery_network_message(struct mosquitto *mosq, void *obj,
 		if (!response.network.interfaces[loop_index].interface_id[0]) {
 			fprintf(
 			    stderr,
-			    "[Discovery] Error: platform discovery response "
-			    "missing network interface number %ld "
-			    "interface_id information\n",
+			    "[Discovery] Error: platform discovery response missing network interface number %ld interface_id information\n",
 			    loop_index);
 			*test_result = EXIT_FAILURE;
 		}
@@ -638,25 +624,26 @@ check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 	    pb_decode(&istream, GeisaPlatformDiscovery_Rsp_fields, &response);
 
 	if (!status) {
-		fprintf(stderr, "[Discovery] Error decoding platform "
-				"discovery response\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error decoding platform discovery response\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.has_waveform == false) {
-		fprintf(stderr,
-			"[Discovery] Error: platform discovery response "
-			"missing waveform information\n");
+		fprintf(
+		    stderr,
+		    "[Discovery] Error: platform discovery response missing waveform information\n");
 		*test_result = EXIT_FAILURE;
 		goto disconnect;
 	}
 
 	if (response.waveform.streams_count != 0) {
 		if (response.waveform.streams == NULL) {
-			fprintf(stderr, "[Discovery] Error: platform discovery "
-					"response missing waveform streams "
-					"information\n");
+			fprintf(
+			    stderr,
+			    "[Discovery] Error: platform discovery response missing waveform streams information\n");
 			*test_result = EXIT_FAILURE;
 			goto disconnect;
 		}
@@ -667,12 +654,10 @@ check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 		     loop_index++) {
 			if (!response.waveform.streams[loop_index]
 				 .stream_id[0]) {
-				fprintf(stderr,
-					"[Discovery] Error: platform discovery "
-					"response missing waveform instance "
-					"number %ld stream_id "
-					"information\n",
-					loop_index);
+				fprintf(
+				    stderr,
+				    "[Discovery] Error: platform discovery response missing waveform instance number %ld stream_id information\n",
+				    loop_index);
 				*test_result = EXIT_FAILURE;
 			}
 			uint32_t total_channel_count =
@@ -684,13 +669,10 @@ check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 			if (total_channel_count !=
 			    response.waveform.streams[loop_index]
 				.total_channel_count) {
-				fprintf(stderr,
-					"[Discovery] Error: platform discovery "
-					"response stream number %ld total "
-					"channel count does not equal sum of "
-					"voltage, current, and other channel "
-					"counts\n",
-					loop_index);
+				fprintf(
+				    stderr,
+				    "[Discovery] Error: platform discovery response stream number %ld total channel count does not equal sum of voltage, current, and other channel counts\n",
+				    loop_index);
 				*test_result = EXIT_FAILURE;
 			}
 		}

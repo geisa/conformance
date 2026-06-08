@@ -177,8 +177,9 @@ static void check_instantaneous_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.timestamp == 0) {
-		fprintf(stderr, "[Instantaneous] Error: instantaneous response "
-				"missing timestamp information\n");
+		fprintf(
+		    stderr,
+		    "[Instantaneous] Error: instantaneous response missing timestamp information\n");
 		ctx->test_result = EXIT_FAILURE;
 	}
 
@@ -258,8 +259,9 @@ int main()
 
 	return_code = api_subscribe(mosq, "geisa/api/instantaneous/data", 0);
 	if (return_code != MOSQ_ERR_SUCCESS) {
-		fprintf(stderr, "[Instantaneous] Error subscribing to "
-				"geisa/api/instantaneous/data topic\n");
+		fprintf(
+		    stderr,
+		    "[Instantaneous] Error subscribing to geisa/api/instantaneous/data topic\n");
 		return_code = EXIT_FAILURE;
 		goto disconnect;
 	}
