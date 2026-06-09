@@ -77,8 +77,10 @@ create_gapi_test_squashfs() {
 	}
 	# shellcheck disable=SC2015
 	podman cp gapi-conformance-tests-container:/usr/local/bin/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin &&
+	podman cp gapi-conformance-tests-container:/usr/local/usr/bin/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin &&
 	podman cp gapi-conformance-tests-container:/usr/local/etc/. "${topdir}"/src/GEISA-API-tests/build_rootfs/etc &&
-	podman cp gapi-conformance-tests-container:/usr/local/usr/lib/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib || {
+	podman cp gapi-conformance-tests-container:/usr/local/usr/lib/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib &&
+	podman cp gapi-conformance-tests-container:/usr/local/lib/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy API test container artifacts"
 		exit 1
 	}

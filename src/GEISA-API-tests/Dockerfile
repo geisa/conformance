@@ -21,6 +21,12 @@ RUN make install
 # Install runtime dependencies of the application
 RUN apt-get download libc6 \
       && dpkg-deb -x libc6_*.deb /usr/local/ \
+      && apt-get download coreutils \
+      && dpkg -x coreutils_*.deb /usr/local \
+      && apt-get download libselinux1 \
+      && dpkg -x libselinux1_*.deb /usr/local \
+      && apt-get download libpcre2-8-0 \
+      && dpkg -x libpcre2-8-0_*.deb /usr/local \
       && rm -f *.deb \
       && rm -rf /var/lib/apt/lists/* \
       && rm -rf /var/cache/apt/archives
