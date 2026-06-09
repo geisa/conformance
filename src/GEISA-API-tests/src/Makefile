@@ -27,6 +27,8 @@ schemas: $(PB_C)
 $(BUILDIR)/schemas/%.pb.o: $(BUILDIR)/schemas/%.pb.c | build_dir
 	$(CC) $(CFLAGS) -c $< -o $@
 
+gapi_mosquitto.o gapi_discovery_common.o $(PB_C:.c=.o) $(NANOPB_CORE:.c=.o): | schemas
+
 $(objects): %: %.c gapi_mosquitto.o $(PB_C:.c=.o) $(NANOPB_CORE:.c=.o)
 
 install: $(objects)
