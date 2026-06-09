@@ -19,9 +19,10 @@ RUN make -j"$(nproc)"
 RUN make install
 
 # Install runtime dependencies of the application
-RUN apt-get download libc6 \
-      && dpkg-deb -x libc6_*.deb /usr/local/ \
-      && apt-get download coreutils \
+RUN mkdir -p /usr/local/etc/ld.so.conf.d/ \
+      && echo "/usr/lib/aarch64-linux-gnu" > /usr/local/etc/ld.so.conf.d/multiarch.conf
+
+RUN apt-get download coreutils \
       && dpkg -x coreutils_*.deb /usr/local \
       && apt-get download libselinux1 \
       && dpkg -x libselinux1_*.deb /usr/local \
