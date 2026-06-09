@@ -69,7 +69,7 @@ static void check_geisa_status_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] geisa test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] geisa test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
@@ -123,7 +123,7 @@ static void check_discovery_geisa_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] geisa test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] geisa test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
@@ -296,7 +296,7 @@ static void check_discovery_device_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] device test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] device test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
@@ -359,7 +359,7 @@ check_discovery_operator_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] operator test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] operator test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
@@ -426,7 +426,8 @@ check_discovery_metrology_geisa_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] metrology test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] metrology test_result: %d\n",
+		*test_result);
 	rr_disconnect = true;
 }
 
@@ -519,7 +520,7 @@ static void check_discovery_sensor_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] sensor test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] sensor test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
@@ -591,7 +592,7 @@ static void check_discovery_network_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] network test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] network test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
@@ -680,7 +681,7 @@ check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaPlatformDiscovery_Rsp_fields, &response);
-	printf("[Discovery] waveform test_result: %d\n", *test_result);
+	fprintf(stdout, "[Discovery] waveform test_result: %d\n", *test_result);
 	rr_disconnect = true;
 }
 
