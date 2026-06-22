@@ -6,7 +6,7 @@ BUILDIR ?= build
 PROTOS := $(wildcard schemas/*.proto)
 PB_C := $(PROTOS:schemas/%.proto=$(BUILDIR)/schemas/%.pb.c)
 
-objects = gapi_connection gapi_discovery
+objects = gapi_connection gapi_discovery gapi_instantaneous
 all: schemas $(objects)
 
 DESTDIR ?= /usr/local/bin
@@ -27,7 +27,9 @@ schemas: $(PB_C)
 $(BUILDIR)/schemas/%.pb.o: $(BUILDIR)/schemas/%.pb.c | build_dir
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(objects): %: %.c gapi_mosquitto.o $(PB_C:.c=.o) $(NANOPB_CORE:.c=.o)
+gapi_mosquitto.o gapi_discovery_common.o $(PB_C:.c=.o) $(NANOPB_CORE:.c=.o): | schemas
+
+$(objects): %: %.c gapi_mosquitto.o gapi_discovery_common.o $(PB_C:.c=.o) $(NANOPB_CORE:.c=.o)
 
 install: $(objects)
 	install -D -m 755 $(objects) $(DESTDIR)

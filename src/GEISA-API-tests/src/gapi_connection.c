@@ -9,6 +9,13 @@ volatile bool running = true;
 volatile bool isConnected = false;
 volatile bool rr_disconnect = false;
 
+/**
+ * @brief Main function for the connection API test. It initializes the MQTT
+ * client, attempts to connect to the broker, and then deinitializes the client.
+ *
+ * @return EXIT_SUCCESS if the connection and disconnection were successful,
+ * otherwise EXIT_FAILURE.
+ */
 int main()
 {
 	struct mosquitto *mosq = NULL;
