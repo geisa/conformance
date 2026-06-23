@@ -463,6 +463,65 @@ disconnect:
 }
 
 /**
+ * @brief Callback for waveform unsubscribe message when not subscribed,
+ * checks for not subscribed response.
+ *
+ * @param mosq mosquitto instance pointer
+ * @param obj The user data object, which is a pointer to the waveform test
+ * context
+ * @param msg pointer to mosquitto message containing waveform response
+ */
+static void
+check_waveform_not_subscribed_message(struct mosquitto *mosq, void *obj,
+				      const struct mosquitto_message *msg)
+{
+	GeisaWaveform_Rsp response = GeisaWaveform_Rsp_init_default;
+	(void)mosq;
+	struct waveform_test_ctx *ctx = obj;
+	int test_result = EXIT_SUCCESS;
+	pb_istream_t istream;
+	bool status = false;
+
+	istream = pb_istream_from_buffer(msg->payload, msg->payloadlen);
+	status = pb_decode(&istream, GeisaWaveform_Rsp_fields, &response);
+
+	if (!status) {
+		fprintf(stderr,
+			"[Waveform] Error decoding waveform response\n");
+		test_result = EXIT_FAILURE;
+		goto disconnect;
+	}
+
+	if (response.has_status == false) {
+		fprintf(
+		    stderr,
+		    "[Waveform] Error: waveform response missing status message\n");
+		test_result = EXIT_FAILURE;
+	}
+
+	if (check_geisa_status(&response.status, "Waveform") != EXIT_SUCCESS) {
+		test_result = EXIT_FAILURE;
+	}
+
+	if (response.waveform_status !=
+	    GeisaWaveform_Status_WAVEFORM_ERR_NOT_SUBSCRIBED) {
+		fprintf(
+		    stderr,
+		    "[Waveform] Error: waveform response waveform_status should be not subscribed\n");
+		test_result = EXIT_FAILURE;
+	}
+
+disconnect:
+	pb_release(GeisaWaveform_Rsp_fields, &response);
+	fprintf(stdout, "[Waveform] waveform not subscribed test_result: %d\n",
+		test_result);
+	if (test_result == EXIT_FAILURE) {
+		ctx->test_result = test_result;
+	}
+	rr_disconnect = true;
+}
+
+/**
  * @brief Sends a waveform request message to the device under test.
  *
  * @param mosq The mosquitto client instance
@@ -628,6 +687,44 @@ static int already_subscribed_waveform_test(struct mosquitto *mosq,
 }
 
 /**
+ * @brief Unsubscribes from waveform streams and checks for not subscribed
+ * messages.
+ *
+ * @param mosq The mosquitto client instance
+ * @param ctx The waveform test context containing information about the streams
+ * @param request The waveform request message to send
+ * @return EXIT_SUCCESS if all requests were sent successfully, EXIT_FAILURE
+ * otherwise
+ */
+static int not_subscribed_waveform_test(struct mosquitto *mosq,
+					struct waveform_test_ctx *ctx,
+					GeisaWaveform_Req *request)
+{
+	int return_code = EXIT_SUCCESS;
+	ctx->test_result = EXIT_SUCCESS;
+
+	for (ctx->stream_index = 0; ctx->stream_index < ctx->streams_count;
+	     ctx->stream_index++) {
+		fprintf(stdout, "[Waveform] Unsubscribing from stream_id: %s\n",
+			ctx->streams[ctx->stream_index].stream_id);
+		mosquitto_message_callback_set(
+		    mosq, check_waveform_not_subscribed_message);
+		request->stream_id = ctx->streams[ctx->stream_index].stream_id;
+		request->request_type =
+		    GeisaWaveform_RequestType_WAVEFORM_UNSUBSCRIBE;
+		if (send_waveform_request(mosq, request) != EXIT_SUCCESS) {
+			fprintf(
+			    stderr,
+			    "[Waveform] Error sending waveform unsubscribe request for stream_id: %s\n",
+			    ctx->streams[ctx->stream_index].stream_id);
+			return_code = EXIT_FAILURE;
+		}
+	}
+
+	return return_code;
+}
+
+/**
  * @brief Main function for waveform API tests, initializes MQTT communication,
  * sets appropriate message callback based on command line argument, sends
  * discovery request and waveform request to check waveform response message
@@ -649,7 +746,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Usage: %s <waveform_test_type>\n", argv[0]);
 		fprintf(stderr, "waveform test available:\n"
 				"* subscribe_unsubscribe\n"
-				"* already_subscribed\n");
+				"* already_subscribed\n"
+				"* not_subscribed\n");
 		return EXIT_FAILURE;
 	}
 
@@ -707,6 +805,8 @@ int main(int argc, char *argv[])
 	} else if (strcmp(argv[1], "already_subscribed") == 0) {
 		return_code =
 		    already_subscribed_waveform_test(mosq, ctx, &request);
+	} else if (strcmp(argv[1], "not_subscribed") == 0) {
+		return_code = not_subscribed_waveform_test(mosq, ctx, &request);
 	} else {
 		fprintf(stderr, "Invalid waveform test type: %s\n", argv[1]);
 		return_code = EXIT_FAILURE;
