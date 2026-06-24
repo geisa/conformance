@@ -11,6 +11,7 @@
 volatile bool running = true;
 volatile bool isConnected = false;
 volatile bool rr_disconnect = false;
+const int TIMEOUT_S = 5;
 
 /**
  * @brief Callback for geisa status response message, checks for successful
@@ -701,6 +702,7 @@ int main(int argc, char *argv[])
 	struct mosquitto *mosq = NULL;
 	int return_code = 0;
 	int test_result = 0;
+	time_t start = 0;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <callback_type>\n", argv[0]);
@@ -754,9 +756,17 @@ int main(int argc, char *argv[])
 
 	mosquitto_user_data_set(mosq, &test_result);
 
+	start = time(NULL);
 	while (running && !isConnected) {
 		mosquitto_loop(mosq, -1, 1);
-		sleep(1);
+		if (difftime(time(NULL), start) > TIMEOUT_S) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Connection timed out after %d seconds\n",
+			    TIMEOUT_S);
+			return_code = EXIT_FAILURE;
+			goto disconnect;
+		}
 	}
 
 	if (!isConnected) {
