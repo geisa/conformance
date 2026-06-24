@@ -215,6 +215,12 @@ int main()
 
 	struct instantaneous_test_ctx *ctx =
 	    calloc(1, sizeof(struct instantaneous_test_ctx));
+	if (!ctx) {
+		fprintf(
+		    stderr,
+		    "Error allocating memory for instantaneous test context\n");
+		return EXIT_FAILURE;
+	}
 
 	ctx->test_result = 0;
 
