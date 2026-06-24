@@ -4,6 +4,7 @@
  * @copyright Copyright (C) 2026 Southern California Edison
  */
 #include "gapi_discovery.h"
+#include "geisa_status.h"
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
@@ -198,16 +199,7 @@ check_waveform_subscribe_success_message(struct mosquitto *mosq, void *obj,
 		test_result = EXIT_FAILURE;
 	}
 
-	if (response.status.code != GeisaStatusCode_GEISA_STATUS_SUCCESS) {
-		fprintf(stderr,
-			"[Waveform] Error: waveform response not success\n");
-		test_result = EXIT_FAILURE;
-	}
-
-	if (!response.status.message || !response.status.message[0]) {
-		fprintf(
-		    stderr,
-		    "[Waveform] Error: waveform response missing status message information\n");
+	if (check_geisa_status(&response.status, "Waveform") != EXIT_SUCCESS) {
 		test_result = EXIT_FAILURE;
 	}
 
@@ -380,16 +372,7 @@ check_waveform_unsubscribe_success_message(struct mosquitto *mosq, void *obj,
 		test_result = EXIT_FAILURE;
 	}
 
-	if (response.status.code != GeisaStatusCode_GEISA_STATUS_SUCCESS) {
-		fprintf(stderr,
-			"[Waveform] Error: waveform response not success\n");
-		test_result = EXIT_FAILURE;
-	}
-
-	if (!response.status.message || !response.status.message[0]) {
-		fprintf(
-		    stderr,
-		    "[Waveform] Error: waveform response missing status message information\n");
+	if (check_geisa_status(&response.status, "Waveform") != EXIT_SUCCESS) {
 		test_result = EXIT_FAILURE;
 	}
 
