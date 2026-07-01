@@ -196,7 +196,7 @@ static void check_instantaneous_message(struct mosquitto *mosq, void *obj,
 
 disconnect:
 	pb_release(GeisaInstantaneousQuantities_fields, &response);
-	printf("[Instantaneous] test_result: %d\n", ctx->test_result);
+	fprintf(stdout, "[Instantaneous] test_result: %d\n", ctx->test_result);
 	running = false;
 }
 

@@ -8,6 +8,9 @@ on:
         branches: [main]
     pull_request_target:
 
+env:
+  CQFD_VERSION: 5.10.2
+
 jobs:
     shellcheck:
         runs-on: ubuntu-latest
@@ -18,8 +21,8 @@ jobs:
                   ref: ${{ github.event.pull_request.head.sha || github.sha }}
             - name: Install CQFD and create docker image
               run: |
-                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v5.8.0/cqfd_5.8.0_all.deb
-                  sudo dpkg -i ./cqfd_5.8.0_all.deb
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
                   cqfd init
             - name: Run shellcheck
               run: |
@@ -33,8 +36,8 @@ jobs:
                   ref: ${{ github.event.pull_request.head.sha || github.sha }}
             - name: Install CQFD and create docker image
               run: |
-                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v5.8.0/cqfd_5.8.0_all.deb
-                  sudo dpkg -i ./cqfd_5.8.0_all.deb
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
                   cqfd init
             - name: Run pylint
               run: |
@@ -48,8 +51,8 @@ jobs:
                   ref: ${{ github.event.pull_request.head.sha || github.sha }}
             - name: Install CQFD and create docker image
               run: |
-                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v5.8.0/cqfd_5.8.0_all.deb
-                  sudo dpkg -i ./cqfd_5.8.0_all.deb
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
                   cqfd init
             - name: Run black
               run: |
@@ -63,8 +66,8 @@ jobs:
                   ref: ${{ github.event.pull_request.head.sha || github.sha }}
             - name: Install CQFD and create docker image
               run: |
-                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v5.8.0/cqfd_5.8.0_all.deb
-                  sudo dpkg -i ./cqfd_5.8.0_all.deb
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
                   cqfd init
             - name: Run clang-format
               run: |
@@ -79,8 +82,8 @@ jobs:
                   submodules: true
             - name: Install CQFD and create docker image
               run: |
-                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v5.8.0/cqfd_5.8.0_all.deb
-                  sudo dpkg -i ./cqfd_5.8.0_all.deb
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
                   cqfd init
             - name: Run clang-tidy
               run: |
