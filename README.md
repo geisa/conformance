@@ -4,9 +4,9 @@
 # GEISA Conformance - a GEISA validation framework
 
 GEISA conformance is designed to help developers to validate the conformance
-with the [GEISA Specification](https://github.com/geisa/specification).  
+with the [GEISA Specification](https://github.com/geisa/specification).
 
-The GEISA Specification is an effort by the Grid Edge Interoperability and Security Alliance to define a consistent, secure, and interoperable computing environment for embedded devices at the very edge of the electric utility grid, like electric meters and distribution automation devices, for the benefit of utilities, platform vendors, and software vendors.  If you would like to get involved, please head over to our Wiki page for details on participation (https://lfenergy.org/projects/geisa/).  Follow the onboarding link for details about participating in our community process.  
+The GEISA Specification is an effort by the Grid Edge Interoperability and Security Alliance to define a consistent, secure, and interoperable computing environment for embedded devices at the very edge of the electric utility grid, like electric meters and distribution automation devices, for the benefit of utilities, platform vendors, and software vendors.  If you would like to get involved, please head over to our Wiki page for details on participation (https://lfenergy.org/projects/geisa/).  Follow the onboarding link for details about participating in our community process.
 
 ## Usage
 
@@ -41,6 +41,11 @@ The automatic test launcher requires the following requirements:
     - qemu-user-static (On ubuntu, install with `sudo apt install qemu-user-static`)
     - mksquashfs (On ubuntu, install with `sudo apt install squashfs-tools`)
     - launch_gapi_test_app.sh script see [API Launching script](#api-launching-script) section
+  * For adm tests:
+    - bsdmainutils (On ubuntu, install with `sudo apt install bsdmainutils`)
+    - curl (On ubuntu, install with `sudo apt install curl`)
+    - default-jre-headless (On ubuntu, install with `sudo apt install default-jre-headless`)
+    - wget (On ubuntu, install with `sudo apt install wget`)
 
 A docker support is also available to launch the tests with a container, it requires:
   - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
@@ -74,6 +79,17 @@ Optional options:
 * `--no-gapi-tests`: Do not run GEISA Application Programming Interface Conformance tests
 * `--help`: display help message
 
+GADM test options (optional):
+* `--host-ip <host_ip>`: IP address of the host running the EMS server
+* `--api-endpoint <endpoint>`: EMS API endpoint (default: <server-url>/api)
+* `--client-name <name>`: ADM client endpoint name (default: geisa_adm_client)
+* `--client-path <path>`: Path to ADM client binary on the board (default: /usr/bin/adm_client)
+* `--client-psk-identity <id>`: PSK identity for the ADM client (default: <client-name>)
+* `--client-psk-value <value>`: PSK secret for the ADM client (default: auto-generated hex string of length 16)
+* `--client-params <params>`: Parameters to start the ADM client (use case: <client-path> <client-params>)
+* `--package-path <path>`: Path to the ADM package to test (a squashfs file containing the client binary for the current implementation)
+* `--server-url <url>`: EMS server URL (default: http://localhost:8080)
+
 Environment variables can also be used to configure the script:
 * `CONFORMACE_SCP_ARGS`: Additional arguments for the `scp` command
 * `CONFORMACE_SSH_ARGS`: Additional arguments for the `ssh` command
@@ -82,6 +98,12 @@ The tests names correspond to a part of the filename.
 Example: `GLEE_TESTS="os_requirements_tests application_isolation"` will run only the `os_requirements_tests` and `application_isolation` tests.
 
 A xml and pdf report will be generated in the `reports` directory.
+
+For ADM tests, if your software package is outside the project directory, you may want to mount its directory in the container by setting the `CQFD_EXTRA_RUN_ARGS` environment variable before running tests. For example:
+
+```bash
+export CQFD_EXTRA_RUN_ARGS="-v path/to/package:path/to/package"
+```
 
 To use the docker support run with the following commands:
 ```bash
