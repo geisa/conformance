@@ -4,6 +4,7 @@
  * @copyright Copyright (C) 2026 Southern California Edison
  */
 #include "gapi_discovery.h"
+#include "geisa_status.h"
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
@@ -11,6 +12,7 @@
 volatile bool running = true;
 volatile bool isConnected = false;
 volatile bool rr_disconnect = false;
+const int TIMEOUT_S = 5;
 
 /**
  * @brief Callback for geisa status response message, checks for successful
@@ -53,17 +55,7 @@ static void check_geisa_status_message(struct mosquitto *mosq, void *obj,
 		goto disconnect;
 	}
 
-	if (response.status.code != GeisaStatusCode_GEISA_STATUS_SUCCESS) {
-		fprintf(
-		    stderr,
-		    "[Discovery] Error: geisa status response not success\n");
-		*test_result = EXIT_FAILURE;
-	}
-
-	if (!response.status.message || !response.status.message[0]) {
-		fprintf(
-		    stderr,
-		    "[Discovery] Error: geisa status response missing message information\n");
+	if (check_geisa_status(&response.status, "Discovery") != EXIT_SUCCESS) {
 		*test_result = EXIT_FAILURE;
 	}
 
@@ -701,6 +693,7 @@ int main(int argc, char *argv[])
 	struct mosquitto *mosq = NULL;
 	int return_code = 0;
 	int test_result = 0;
+	time_t start = 0;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <callback_type>\n", argv[0]);
@@ -754,9 +747,17 @@ int main(int argc, char *argv[])
 
 	mosquitto_user_data_set(mosq, &test_result);
 
+	start = time(NULL);
 	while (running && !isConnected) {
 		mosquitto_loop(mosq, -1, 1);
-		sleep(1);
+		if (difftime(time(NULL), start) > TIMEOUT_S) {
+			fprintf(
+			    stderr,
+			    "[Discovery] Connection timed out after %d seconds\n",
+			    TIMEOUT_S);
+			return_code = EXIT_FAILURE;
+			goto disconnect;
+		}
 	}
 
 	if (!isConnected) {

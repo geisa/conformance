@@ -1,0 +1,3 @@
+GeisaWaveform_Req.stream_id type:FT_POINTER
+GeisaWaveform_Rsp.stream_id type:FT_POINTER
+GeisaWaveform_Rsp.socket_path type:FT_POINTER
