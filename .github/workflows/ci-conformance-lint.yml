@@ -1,0 +1,98 @@
+# Copyright (C) 2026 Southern California Edison.
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI Conformance lint
+
+on:
+    push:
+        branches: [main]
+        paths-ignore:
+            - 'requirements/**'
+            - 'tools/conformance-map/**'
+            - '.github/workflows/ci-conformance-map.yml'
+    pull_request:
+        branches: [main]
+        paths-ignore:
+            - 'requirements/**'
+            - 'tools/conformance-map/**'
+            - '.github/workflows/ci-conformance-map.yml'
+
+env:
+  CQFD_VERSION: 5.10.2
+
+permissions:
+    contents: read
+    pull-requests: read
+
+jobs:
+    shellcheck:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+            - name: Install CQFD and create docker image
+              run: |
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  cqfd init
+            - name: Run shellcheck
+              run: |
+                  cqfd -b shellcheck
+
+    pylint:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+            - name: Install CQFD and create docker image
+              run: |
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  cqfd init
+            - name: Run pylint
+              run: |
+                  cqfd -b pylint
+
+    black:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+            - name: Install CQFD and create docker image
+              run: |
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  cqfd init
+            - name: Run black
+              run: |
+                  cqfd -b black
+
+    clang-format:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+            - name: Install CQFD and create docker image
+              run: |
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  cqfd init
+            - name: Run clang-format
+              run: |
+                  cqfd -b clang-format
+
+    clang-tidy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+              with:
+                  submodules: true
+            - name: Install CQFD and create docker image
+              run: |
+                  curl -LO https://github.com/savoirfairelinux/cqfd/releases/download/v${{ env.CQFD_VERSION }}/cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  sudo dpkg -i ./cqfd_${{ env.CQFD_VERSION }}_all.deb
+                  cqfd init
+            - name: Run clang-tidy
+              run: |
+                  cqfd -b clang-tidy

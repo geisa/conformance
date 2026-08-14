@@ -1,0 +1,52 @@
+# Copyright (C) 2026 Southern California Edison.
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI Conformance on target
+
+on:
+    push:
+        branches: [main]
+        paths-ignore:
+            - 'requirements/**'
+            - 'tools/conformance-map/**'
+            - '.github/workflows/ci-conformance-map.yml'
+    pull_request_target:
+        branches: [main]
+        paths-ignore:
+            - 'requirements/**'
+            - 'tools/conformance-map/**'
+            - '.github/workflows/ci-conformance-map.yml'
+
+permissions:
+    contents: read
+    pull-requests: read
+
+jobs:
+    on-target-tests-approval:
+        runs-on: ubuntu-latest
+        environment:
+          name: ${{ github.event_name == 'push' && 'test-on-target-auto' || 'test-on-target' }}
+          deployment: false
+        steps:
+            - run: echo "Running on-target tests approved"
+
+    on-target-tests-ssh-imx93:
+        uses: ./.github/workflows/ci-conformance-on-target-ssh.yml
+        with:
+            runner: imx93
+        secrets:
+            target_ip: ${{ secrets.IMX93_TARGET_IP }}
+            target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
+        needs:
+            - on-target-tests-approval
+
+    on-target-tests-serial-imx93:
+        uses: ./.github/workflows/ci-conformance-on-target-serial.yml
+        with:
+            runner: imx93
+            target_tty: /dev/ttyGEISA_imx93
+        secrets:
+            target_password: ${{ secrets.IMX93_TARGET_PASSWORD }}
+        needs:
+            - on-target-tests-approval
+            - on-target-tests-ssh-imx93

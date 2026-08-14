@@ -1,5 +1,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI Conformance status](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml/badge.svg?branch=main)](https://github.com/geisa/conformance/actions/workflows/ci-conformance.yml)
+[![CI Conformance lint status](https://github.com/geisa/conformance/actions/workflows/ci-conformance-lint.yml/badge.svg?branch=main)](https://github.com/geisa/conformance/actions/workflows/ci-conformance-lint.yml)
+[![CI Conformance on-target status](https://github.com/geisa/conformance/actions/workflows/ci-conformance-on-target.yml/badge.svg?branch=main)](https://github.com/geisa/conformance/actions/workflows/ci-conformance-on-target.yml)
+[![CI Conformance map status](https://github.com/geisa/conformance/actions/workflows/ci-conformance-map.yml/badge.svg?branch=main)](https://github.com/geisa/conformance/actions/workflows/ci-conformance-map.yml)
 
 # GEISA Conformance - a GEISA validation framework
 
@@ -250,7 +252,7 @@ clang-tidy) and on target tests on each push.
 
 If you want to add a new target in the CI, add your runner in github settings
 with a label corresponding to the target and modify
-.github/workflows/ci-conformance.yml:
+.github/workflows/ci-conformance-on-target.yml:
 
 * To add ssh tests add the following code snippet in the `jobs` section:
 ```
@@ -262,7 +264,8 @@ on-target-tests-ssh-<target_name>:
     secrets:
         target_ip: ${{ secrets.<target_ip_secret> }}
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black, clang-format, clang-tidy]
+    needs:
+        - on-target-tests-approval
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
@@ -284,7 +287,9 @@ on-target-tests-serial-<target_name>:
         target_baudrate: <target_baudrate>
     secrets:
         target_password: ${{ secrets.<target_ip_password> }}
-    needs: [shellcheck, pylint, black, clang-format, clang-tidy, on-target-tests-ssh-<target_name>]
+    needs:
+        - on-target-tests-approval
+        - on-target-tests-ssh-<target_name>
 ```
 with :
 * `<target_name>` being the name of your target (corresponding to the label
@@ -294,6 +299,13 @@ you configured).
 * `<target_baudrate>` being the baudrate of your target (optional, default: 115200)
 * `<target_ip_password>` being the name of the secret containing the password
 of your target. (optional, if not provided, no password will be used for the serial connection)
+
+### On-target tests approval
+
+For security reasons, the on-target tests are not automatically executed on each
+push. A manual approval by a maintainer is required to run the tests.
+Exception is made for main branch, where the tests are automatically executed on
+each push.
 
 ## API Launching script
 
