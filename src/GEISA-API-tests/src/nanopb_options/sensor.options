@@ -1,1 +1,4 @@
 *.* max_size:32
+GeisaSensorReadings_Req.sensor_id type:FT_POINTER
+GeisaSensorReadings_Rsp.readings type:FT_POINTER
+GeisaSensorReading.values type:FT_POINTER
