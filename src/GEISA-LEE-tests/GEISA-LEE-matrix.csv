@@ -1,24 +1,65 @@
-GEISA LEE Hardware Requirements,GEISA-LEE-HW-01
-GEISA LEE Hardware Requirements,GEISA-LEE-HW-02
-GEISA LEE Hardware Requirements,GEISA-LEE-HW-03
-GEISA LEE Hardware Requirements,GEISA-LEE-HW-04
-GEISA LEE Hardware Requirements,GEISA-LEE-HW-05
-GEISA LEE Hardware Requirements,GEISA-LEE-HW-06
-GEISA LEE Runtime OS Consumption Requirements,GEISA-LEE-RUNTIME-OS-01
-GEISA LEE Runtime OS Consumption Requirements,GEISA-LEE-RUNTIME-OS-02
-GEISA LEE OS Requirements,GEISA-LEE-OS-01
-GEISA LEE OS Requirements,GEISA-LEE-OS-02
-GEISA LEE OS Requirements,GEISA-LEE-OS-03
-GEISA LEE OS Requirements,GEISA-LEE-OS-04
-GEISA LEE OS Requirements,GEISA-LEE-OS-05
-GEISA LEE OS Requirements,GEISA-LEE-OS-06
-GEISA LEE OS Requirements,GEISA-LEE-OS-07
-GEISA LEE OS Requirements,GEISA-LEE-OS-08
-GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-ISOLATION-01
-GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-ISOLATION-02
-GEISA LEE Connectivity Requirements,GEISA-LEE-CONNECTIVITY-01
-GEISA LEE Connectivity Requirements,GEISA-LEE-CONNECTIVITY-02
-GEISA LEE Connectivity Requirements,GEISA-LEE-CONNECTIVITY-03
-GEISA LEE Connectivity Requirements,GEISA-LEE-CONNECTIVITY-04
-GEISA LEE Kernel Minimization Requirements,GEISA-LEE-KERNEL-MIN-01
-GEISA LEE Kernel Minimization Requirements,GEISA-LEE-KERNEL-MIN-02
+GEISA LEE OS Requirements,GEISA-LEE-OS-SHALL-01
+GEISA LEE OS Requirements,GEISA-LEE-OS-SHOULD-02
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-MUST-01
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-MUST-02
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-03
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-04
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-05
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-06
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-07
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-08
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-09
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-10
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-11
+GEISA LEE Application Isolation Requirements,GEISA-LEE-APP-SHALL-12
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-01
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-02
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-03
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-04
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-05
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-06
+GEISA LEE Base Libraries Requirements,GEISA-LEE-LIB-MUST-07
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-01
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-02
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-03
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-04
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-05
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-06
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-07
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-08
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-09
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-10
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-11
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-12
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-13
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-14
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-15
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-16
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-17
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-18
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-19
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-20
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-21
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-22
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-23
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-24
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-25
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-26
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-27
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-28
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-29
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-30
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-31
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-32
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-33
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-34
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-35
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-36
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-37
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-38
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-39
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-40
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-41
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-42
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-MUST-43
+GEISA LEE Base Filesystem Requirements,GEISA-LEE-FS-SHALL-44
