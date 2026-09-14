@@ -21,8 +21,8 @@ def test_extracts_reviewable_blocks_with_context() -> None:
     data = extract_candidates(FIXTURE, "LEE")
 
     assert data["pillar"] == "LEE"
-    assert data["candidate_count"] == 9
-    assert data["keyword_occurrence_count"] == 10
+    assert data["candidate_count"] == 18
+    assert data["keyword_occurrence_count"] == 12
     assert data["noncanonical_keyword_count"] == 2
 
     candidates = data["candidates"]
@@ -58,6 +58,64 @@ def test_extracts_reviewable_blocks_with_context() -> None:
         {"text": "application image support"},
     ]
 
+    list_item_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.get("context", {}).get("list_item")
+    ]
+    assert [
+        candidate["requirement"]["source_text"] for candidate in list_item_candidates
+    ] == [
+        "a shared base image",
+        "a hardened base image",
+        "application image support",
+        "/tmp",
+        "a constrained temporary directory",
+        "storage",
+        "/tmp",
+    ]
+    for candidate in list_item_candidates[:3]:
+        assert (
+            candidate["context"]["parent_candidate_id"]
+            == grouped_candidate["candidate_id"]
+        )
+        assert candidate["requirement"]["inherited_level"] == "MUST"
+        assert candidate["requirement"]["inherited_source_keyword"] == "MUST"
+        assert candidate["candidate_id"] != grouped_candidate["candidate_id"]
+        assert candidate["source"]["line_start"]
+    assert list_item_candidates[1]["context"]["list_path"] == ["a shared base image"]
+
+    network_candidate = next(
+        candidate
+        for candidate in candidates
+        if candidate["requirement"]["source_text"]
+        == "Applications MUST be denied direct network access by default."
+    )
+    tmp_list_item = next(
+        candidate
+        for candidate in list_item_candidates
+        if candidate["requirement"]["source_text"] == "/tmp"
+    )
+    assert tmp_list_item["requirement"]["inherited_level"] == "MUST"
+    assert tmp_list_item["requirement"]["inherited_source_keyword"] == "MUST"
+    assert (
+        tmp_list_item["context"]["parent_candidate_id"]
+        == network_candidate["candidate_id"]
+    )
+
+    nested_list_items = [
+        candidate
+        for candidate in list_item_candidates
+        if candidate["requirement"]["source_text"]
+        == "a constrained temporary directory"
+    ]
+    assert len(nested_list_items) == 1
+    nested_list_item = nested_list_items[0]
+    assert nested_list_item["context"]["list_path"] == [
+        "/tmp",
+        "MUST be limited in size as described in the deployment manifest",
+    ]
+
     aggregate_candidate = next(
         candidate
         for candidate in candidates
@@ -73,14 +131,95 @@ def test_extracts_reviewable_blocks_with_context() -> None:
         "MUST",
         "SHALL NOT",
     ]
+    assert aggregate_candidate["children"] == [
+        {"text": "application data"},
+        {"text": "runtime state"},
+    ]
+    assert not any(
+        candidate.get("context", {}).get("parent_candidate_id")
+        == aggregate_candidate["candidate_id"]
+        for candidate in candidates
+    )
 
-    tmp_candidate = next(
+    nested_keyword_candidates = [
         candidate
         for candidate in candidates
-        if candidate.get("context", {}).get("list_path") == ["/tmp"]
+        if candidate["requirement"]["source_text"]
+        == "MUST be limited in size as described in the deployment manifest"
+    ]
+    assert len(nested_keyword_candidates) == 1
+    tmp_candidate = nested_keyword_candidates[0]
+    assert tmp_candidate["requirement"]["matches"] == [
+        {
+            "level": "MUST",
+            "source_keyword": "MUST",
+            "noncanonical_case": False,
+            "start": 0,
+            "end": 4,
+        }
+    ]
+    assert "inherited_level" not in tmp_candidate["requirement"]
+    assert "inherited_source_keyword" not in tmp_candidate["requirement"]
+    assert not tmp_candidate.get("context", {}).get("list_item")
+    assert (
+        nested_list_item["context"]["parent_candidate_id"]
+        == tmp_candidate["candidate_id"]
     )
-    assert tmp_candidate["requirement"]["source_text"] == (
-        "MUST be limited in size as described in the deployment manifest"
+    assert not any(
+        candidate.get("context", {}).get("list_item")
+        and candidate["source"]["line_start"] == tmp_candidate["source"]["line_start"]
+        and candidate["requirement"]["source_text"]
+        == tmp_candidate["requirement"]["source_text"]
+        for candidate in candidates
+    )
+    assert tmp_candidate["context"]["list_path"] == ["/tmp"]
+
+    boundary_parent = next(
+        candidate
+        for candidate in candidates
+        if candidate["requirement"]["source_text"] == "Platform SHALL provide:"
+    )
+    storage_candidate = next(
+        candidate
+        for candidate in list_item_candidates
+        if candidate["source"]["path"] == "source/lee/list-boundary.rst"
+        and candidate["requirement"]["source_text"] == "storage"
+    )
+    assert storage_candidate["requirement"]["inherited_level"] == "SHALL"
+    assert (
+        storage_candidate["context"]["parent_candidate_id"]
+        == boundary_parent["candidate_id"]
+    )
+
+    inner_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate["requirement"]["source_text"] == "Temporary storage MUST include:"
+    ]
+    assert len(inner_candidates) == 1
+    inner_candidate = inner_candidates[0]
+    assert [match["level"] for match in inner_candidate["requirement"]["matches"]] == [
+        "MUST"
+    ]
+    assert not inner_candidate.get("context", {}).get("list_item")
+
+    boundary_tmp_candidates = [
+        candidate
+        for candidate in list_item_candidates
+        if candidate["source"]["path"] == "source/lee/list-boundary.rst"
+        and candidate["requirement"]["source_text"] == "/tmp"
+    ]
+    assert len(boundary_tmp_candidates) == 1
+    boundary_tmp_candidate = boundary_tmp_candidates[0]
+    assert boundary_tmp_candidate["requirement"]["inherited_level"] == "MUST"
+    assert boundary_tmp_candidate["requirement"]["inherited_source_keyword"] == "MUST"
+    assert (
+        boundary_tmp_candidate["context"]["parent_candidate_id"]
+        == inner_candidate["candidate_id"]
+    )
+    assert (
+        boundary_tmp_candidate["context"]["parent_candidate_id"]
+        != boundary_parent["candidate_id"]
     )
 
     lowercase_candidate = next(
@@ -142,6 +281,6 @@ def test_cli_writes_yaml(tmp_path: Path) -> None:
 
     data = yaml.safe_load(output.read_text(encoding="utf-8"))
 
-    assert data["candidate_count"] == 9
-    assert data["keyword_occurrence_count"] == 10
+    assert data["candidate_count"] == 18
+    assert data["keyword_occurrence_count"] == 12
     assert data["noncanonical_keyword_count"] == 2
