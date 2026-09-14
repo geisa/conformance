@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+
+# Copyright (C) 2026 Southern California Edison
+
 set -e
 
 EXITCODE=0
