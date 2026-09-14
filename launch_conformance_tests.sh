@@ -13,6 +13,7 @@ ENDCOLOR="\e[0m"
 ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
+NO_REBOOT=false
 lee_test_exit_code=0
 adm_test_exit_code=0
 api_test_exit_code=0
@@ -23,6 +24,17 @@ source "${TOPDIR}"/src/GEISA-LEE-tests/user_configuration.conf
 source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh
 source "${TOPDIR}"/src/launch_gapi_conformance_tests.sh
 source "${TOPDIR}"/src/launch_gadm_conformance_tests.sh
+
+trap '
+	echo -e "${RED}Error:${ENDCOLOR} Test run interrupted."
+	echo -e "${ORANGE}Warning:${ENDCOLOR} Test artifacts may still be installed on the board."
+	if [[ "${BOARD_USER:-root}" != root ]]; then
+		echo "Clean them up with: ${ABSOLUTE_PATH} --ip ${BOARD_IP:-<board_ip>} --user ${BOARD_USER} --clean-up"
+	else
+		echo "Clean them up with: ${ABSOLUTE_PATH} --ip ${BOARD_IP:-<board_ip>} --clean-up"
+	fi
+	exit 1
+' INT TERM HUP QUIT TSTP
 
 usage()
 {
@@ -41,6 +53,7 @@ Optional options:
   --user <username>   				Specify the username for the target device (default: root)
   --password <password>  			Specify the password for the target device (default: empty)
   --no-reports        				Do not generate test reports (only run tests and display results)
+  --no-reboot        				Do not reset the board, skipping the tests that require a reboot
   --baudrate <baudrate> 			Specify the baudrate for the serial port of the board (default: 115200)
   --no-glee-tests        			Do not run GEISA Linux Execution Environment Conformance tests
   --no-gadm-tests        			Do not run GEISA Application & Device Management Conformance tests
@@ -103,6 +116,10 @@ while [[ "$#" -gt 0 ]]; do
 		;;
 		--no-reports)
 		NO_REPORTS=true
+		shift
+		;;
+		--no-reboot)
+		NO_REBOOT=true
 		shift
 		;;
 		--baudrate)
@@ -204,7 +221,7 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 		cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 	else
 		echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
-		if [[ -n ${GEISA_APPLICATIONS} ]]; then
+		if [[ -n ${APPLICATIONS} ]]; then
 			echo -e "${ORANGE}Warning:${ENDCOLOR} Applications cannot be provisioned over serial"
 		fi
 		args=(--serial "${BOARD_SERIAL}" \
