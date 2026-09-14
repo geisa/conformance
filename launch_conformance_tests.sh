@@ -13,10 +13,12 @@ ENDCOLOR="\e[0m"
 ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
-bandwidth_test_exit_code=0
 lee_test_exit_code=0
 adm_test_exit_code=0
 api_test_exit_code=0
+
+source "${TOPDIR}"/src/GEISA-LEE-tests/tests_configuration.conf
+source "${TOPDIR}"/src/GEISA-LEE-tests/user_configuration.conf
 
 source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh
 source "${TOPDIR}"/src/launch_gapi_conformance_tests.sh
@@ -44,6 +46,9 @@ Optional options:
   --no-gadm-tests        			Do not run GEISA Application & Device Management Conformance tests
   --no-gapi-tests        			Do not run GEISA Application Programming Interface Conformance tests
   --help              				Show this help message
+
+Applications under test, the LXC path and the container layout are configured in
+src/GEISA-LEE-tests/user_configuration.conf.
 
 GADM test options (optional):
   --host-ip <host_ip>				IP address of the host running the EMS server.
@@ -190,16 +195,18 @@ BOARD_USER=${BOARD_USER:-root}
 if [[ -z ${NO_GLEE_TESTS} ]]; then
 	if [[ -n ${BOARD_IP} ]]; then
 		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		provision_glee_apps_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		if ! ${NO_REPORTS}; then
 			launch_glee_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
-			launch_bandwidth_test_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		else
-			launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
-			launch_bandwidth_test_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+			launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		fi
 		cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
 	else
 		echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
+		if [[ -n ${GEISA_APPLICATIONS} ]]; then
+			echo -e "${ORANGE}Warning:${ENDCOLOR} Applications cannot be provisioned over serial"
+		fi
 		args=(--serial "${BOARD_SERIAL}" \
 			--user "${BOARD_USER}" \
 			--password "${BOARD_PASSWORD:-}" \
@@ -273,4 +280,4 @@ if ! ${NO_REPORTS}; then
 	cd "${TOPDIR}" || exit 1
 fi
 
-exit $(("${lee_test_exit_code}" || "${bandwidth_test_exit_code}" || "${adm_test_exit_code}" || "${api_test_exit_code}"))
+exit $(("${lee_test_exit_code}" || "${adm_test_exit_code}" || "${api_test_exit_code}"))
