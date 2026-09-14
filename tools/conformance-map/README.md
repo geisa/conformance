@@ -19,8 +19,8 @@ It is intended to show:
 - what is missing or only partially covered
 - what changed between a release and current development
 
-LEE and API are the initial focus. ADM and VEE are intentionally paused while
-coverage and reporting on the first two pillars is improved.
+LEE and API are the initial focus areas. ADM and VEE are intentionally paused
+while coverage and reporting on the first two pillars is improved.
 
 ## Approach
 
@@ -119,6 +119,10 @@ checkout branch, commit, list context, and standard or custom admonition
 context. Immediately following child lists and nested child lists are also
 retained.
 
+A list immediately following a block with one requirement keyword is now split
+into separate individual candidates. Nested list items are included and inherit
+the nearest applicable parent keyword.
+
 The tool currently processes RST specification text only. It does not yet
 process protobuf definitions or JSON Schemas, and it does not interpret table
 structures. Explicit requirement keywords in paragraph-like table cells may be
@@ -209,6 +213,28 @@ for pillar in ("lee", "api"):
     )
 PY
 ```
+
+### Generating review reports
+
+Generate HTML review reports after generating the candidate YAML files:
+
+```sh
+python tools/conformance-map/scripts/generate-review-report.py \
+  build/conformance-map/candidates/lee.yaml \
+  build/conformance-map/candidates/lee-review.html
+
+python tools/conformance-map/scripts/generate-review-report.py \
+  build/conformance-map/candidates/api.yaml \
+  build/conformance-map/candidates/api-review.html
+```
+
+These reports are generated for review. Open them in a browser. Source links
+open the recorded specification commit and line in a new tab. A report from a
+dirty checkout may include local text that differs from the linked commit.
+Reports are ignored and should not be committed. The HTML is not an approved
+requirements catalog. Review decisions are not stored in these reports. They
+will be stored separately. Generated list-item candidates are marked as list
+items in the report.
 
 ## Planned commands
 

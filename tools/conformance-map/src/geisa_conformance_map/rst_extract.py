@@ -227,24 +227,36 @@ def _serialize_list_item(item: nodes.list_item) -> dict[str, Any]:
     return result
 
 
-def _following_list(paragraph: nodes.paragraph) -> list[dict[str, Any]]:
-    """Return a list immediately following the paragraph."""
+def _following_list_node(
+    paragraph: nodes.paragraph,
+) -> nodes.bullet_list | nodes.enumerated_list | None:
+    """Return the list immediately following the paragraph."""
 
     parent = paragraph.parent
     if parent is None:
-        return []
+        return None
 
     try:
         index = parent.children.index(paragraph)
     except ValueError:
-        return []
+        return None
 
     if index + 1 >= len(parent.children):
-        return []
+        return None
 
     sibling = parent.children[index + 1]
 
     if not isinstance(sibling, (nodes.bullet_list, nodes.enumerated_list)):
+        return None
+
+    return sibling
+
+
+def _following_list(paragraph: nodes.paragraph) -> list[dict[str, Any]]:
+    """Serialize a list immediately following the paragraph."""
+
+    sibling = _following_list_node(paragraph)
+    if sibling is None:
         return []
 
     return [
@@ -252,6 +264,38 @@ def _following_list(paragraph: nodes.paragraph) -> list[dict[str, Any]]:
         for item in sibling.children
         if isinstance(item, nodes.list_item)
     ]
+
+
+def _list_item_paragraph(item: nodes.list_item) -> nodes.paragraph | None:
+    """Return the first paragraph in a list item."""
+
+    return next(
+        (child for child in item.children if isinstance(child, nodes.paragraph)),
+        None,
+    )
+
+
+def _recursive_list_items(
+    list_node: nodes.bullet_list | nodes.enumerated_list,
+) -> list[nodes.list_item]:
+    """Return inherited list items in source order."""
+
+    items: list[nodes.list_item] = []
+
+    for item in list_node.children:
+        if not isinstance(item, nodes.list_item):
+            continue
+
+        items.append(item)
+        paragraph = _list_item_paragraph(item)
+        if paragraph is not None and _matches(" ".join(paragraph.astext().split())):
+            continue
+
+        for child in item.children:
+            if isinstance(child, (nodes.bullet_list, nodes.enumerated_list)):
+                items.extend(_recursive_list_items(child))
+
+    return items
 
 
 def _admonition_context(
@@ -292,8 +336,9 @@ def _candidate(
     context: CandidateContext,
     source_text: str,
     matches: list[dict[str, Any]],
+    include_children: bool = True,
 ) -> dict[str, Any]:
-    """Build one reviewable source-block candidate."""
+    """Build a candidate from one source block."""
 
     line = context.paragraph.line
     list_path = _list_path(context.paragraph)
@@ -335,14 +380,59 @@ def _candidate(
     if candidate_context:
         candidate["context"] = candidate_context
 
-    if children:
+    if children and include_children:
         candidate["children"] = children
 
     return candidate
 
 
-def extract_file(path: Path, root: Path, pillar: str) -> dict[str, Any]:
-    """Extract candidate requirements and audit data from one RST file."""
+def _list_item_candidate(
+    context: CandidateContext,
+    item: nodes.list_item,
+    parent_candidate: dict[str, Any],
+    inherited_match: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Build a generated candidate for an inherited list item."""
+
+    paragraph = _list_item_paragraph(item)
+    if paragraph is None:
+        return None
+
+    source_text = " ".join(paragraph.astext().split())
+    if not source_text:
+        return None
+    if _matches(source_text):
+        return None
+
+    item_context = CandidateContext(
+        relative_path=context.relative_path,
+        pillar=context.pillar,
+        document=context.document,
+        paragraph=paragraph,
+    )
+    candidate = _candidate(item_context, source_text, [], include_children=False)
+    candidate["requirement"].update(
+        {
+            "inherited_level": inherited_match["level"],
+            "inherited_source_keyword": inherited_match["source_keyword"],
+        }
+    )
+    candidate_context = candidate.setdefault("context", {})
+    candidate_context.update(
+        {
+            "list_item": True,
+            "parent_candidate_id": parent_candidate["candidate_id"],
+        }
+    )
+    return candidate
+
+
+def extract_file(  # pylint: disable=too-many-locals
+    path: Path,
+    root: Path,
+    pillar: str,
+) -> dict[str, Any]:
+    """Extract candidates and audit data from one RST file."""
 
     text = path.read_text(encoding="utf-8")
     document = publish_doctree(
@@ -374,18 +464,31 @@ def extract_file(path: Path, root: Path, pillar: str) -> dict[str, Any]:
             1 for match in matches if match["noncanonical_case"]
         )
 
-        candidates.append(
-            _candidate(
-                CandidateContext(
-                    relative_path=relative_path,
-                    pillar=pillar,
-                    document=document,
-                    paragraph=paragraph,
-                ),
-                source_text,
-                matches,
-            )
+        context = CandidateContext(
+            relative_path=relative_path,
+            pillar=pillar,
+            document=document,
+            paragraph=paragraph,
         )
+        following_list = _following_list_node(paragraph)
+        should_generate_list_items = len(matches) == 1 and following_list is not None
+        candidate = _candidate(
+            context,
+            source_text,
+            matches,
+        )
+        candidates.append(candidate)
+
+        if should_generate_list_items:
+            for item in _recursive_list_items(following_list):
+                list_item_candidate = _list_item_candidate(
+                    context,
+                    item,
+                    candidate,
+                    matches[0],
+                )
+                if list_item_candidate is not None:
+                    candidates.append(list_item_candidate)
 
     return {
         "candidates": candidates,
