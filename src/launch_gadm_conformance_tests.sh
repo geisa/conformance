@@ -246,7 +246,7 @@ launch_gadm_tests() {
 	local ems_server_path="${topdir}/src/leshan/leshan_ems_server.jar"
 	local server_pid=""
 	local client_pid=""
-	local adm_test_exit_code=0
+	adm_test_exit_code=0
 
 	if ! ping -c 1 -W 2 "${board_ip}" >/dev/null 2>&1; then
 		echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${board_ip}"

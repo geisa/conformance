@@ -315,4 +315,9 @@ if ! ${NO_REPORTS}; then
 	cd "${TOPDIR}" || exit 1
 fi
 
-exit $(("${lee_test_exit_code}" || "${adm_test_exit_code}" || "${api_test_exit_code}"))
+if [[ "${lee_test_exit_code}" != 0 ||
+	"${adm_test_exit_code}" != 0 ||
+	"${api_test_exit_code}" != 0 ]]; then
+	exit 1
+fi
+exit 0
