@@ -17,13 +17,37 @@ NO_REBOOT="${NO_REBOOT:-false}"
 REBOOT_PERSISTENCE_MARKER="${REBOOT_PERSISTENCE_MARKER:-}"
 
 SSH() {
+	local status
+
 	#shellcheck disable=SC2086
-	sshpass -p "${board_password}" ssh ${CONFORMANCE_SSH_ARGS} -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
+	ssh ${CONFORMANCE_SSH_ARGS} -tt -o BatchMode=yes -o PreferredAuthentications=publickey -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
+	status=$?
+	if [[ ${status} -ne 255 || -z "${board_password:-}" ]]; then
+		return "${status}"
+	fi
+	command -v sshpass >/dev/null 2>&1 || {
+		echo -e "${RED}Error:${ENDCOLOR} sshpass is required for password authentication"
+		return 127
+	}
+	#shellcheck disable=SC2086
+	SSHPASS="${board_password}" sshpass -e ssh ${CONFORMANCE_SSH_ARGS} -tt -o PreferredAuthentications=password,keyboard-interactive -o PubkeyAuthentication=no -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
 }
 
 SCP() {
+	local status
+
 	#shellcheck disable=SC2086
-	sshpass -p "${board_password}" scp ${CONFORMANCE_SCP_ARGS} -o StrictHostKeyChecking=no "$@"
+	scp ${CONFORMANCE_SCP_ARGS} -o BatchMode=yes -o PreferredAuthentications=publickey -o StrictHostKeyChecking=no "$@"
+	status=$?
+	if [[ ${status} -ne 255 || -z "${board_password:-}" ]]; then
+		return "${status}"
+	fi
+	command -v sshpass >/dev/null 2>&1 || {
+		echo -e "${RED}Error:${ENDCOLOR} sshpass is required for password authentication"
+		return 127
+	}
+	#shellcheck disable=SC2086
+	SSHPASS="${board_password}" sshpass -e scp ${CONFORMANCE_SCP_ARGS} -o PreferredAuthentications=password,keyboard-interactive -o PubkeyAuthentication=no -o StrictHostKeyChecking=no "$@"
 }
 
 prepare_external_application() {
@@ -106,8 +130,8 @@ connect_and_transfer_with_ssh() {
 
 	echo ""
 	echo "Copying LEE runtime files to board"
-	staging_dir="$(mktemp -d)" || {
-		echo -e "${RED}Error:${ENDCOLOR} Failed to create local LEE staging directory"
+	runtime_archive="$(mktemp)" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to create local LEE runtime archive"
 		exit 1
 	}
 	tar -C "${topdir}/src" "${tar_excludes[@]}" \
@@ -116,19 +140,24 @@ connect_and_transfer_with_ssh() {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to archive LEE runtime files"
 		exit 1
 	}
-	rm -rf "${staging_dir}/GEISA-LEE-tests/src/community"
 	SSH "mkdir -p /tmp/conformance_tests" || {
-		rm -rf "${staging_dir}"
+		rm -f "${runtime_archive}"
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create LEE runtime directory on board"
 		exit 1
 	}
-	SCP -r "${staging_dir}/cukinia" "${staging_dir}/GEISA-LEE-tests" \
-		"${board_user}@[${board_ip}]:/tmp/conformance_tests/" 1>/dev/null || {
-		rm -rf "${staging_dir}"
+	SCP "${runtime_archive}" \
+		"${board_user}@[${board_ip}]:/tmp/conformance_tests/lee-runtime.tar.gz" 1>/dev/null || {
+		rm -f "${runtime_archive}"
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy LEE runtime files to board"
 		exit 1
 	}
-	rm -rf "${staging_dir}"
+	SSH "tar -C /tmp/conformance_tests -xzf /tmp/conformance_tests/lee-runtime.tar.gz && \
+		rm /tmp/conformance_tests/lee-runtime.tar.gz" || {
+		rm -f "${runtime_archive}"
+		echo -e "${RED}Error:${ENDCOLOR} Failed to extract LEE runtime files on board"
+		exit 1
+	}
+	rm -f "${runtime_archive}"
 }
 
 provision_glee_apps_with_ssh() {

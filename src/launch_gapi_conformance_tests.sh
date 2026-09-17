@@ -12,13 +12,37 @@ declare CONFORMANCE_SSH_ARGS
 declare CONFORMANCE_SCP_ARGS
 
 SSH() {
+	local status
+
 	#shellcheck disable=SC2086
-	sshpass -p "${board_password}" ssh ${CONFORMANCE_SSH_ARGS} -tt -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
+	ssh ${CONFORMANCE_SSH_ARGS} -tt -o BatchMode=yes -o PreferredAuthentications=publickey -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
+	status=$?
+	if [[ ${status} -ne 255 || -z "${board_password:-}" ]]; then
+		return "${status}"
+	fi
+	command -v sshpass >/dev/null 2>&1 || {
+		echo -e "${RED}Error:${ENDCOLOR} sshpass is required for password authentication"
+		return 127
+	}
+	#shellcheck disable=SC2086
+	SSHPASS="${board_password}" sshpass -e ssh ${CONFORMANCE_SSH_ARGS} -tt -o PreferredAuthentications=password,keyboard-interactive -o PubkeyAuthentication=no -o LogLevel=QUIET -o StrictHostKeyChecking=no "${board_user}@${board_ip}" "$@"
 }
 
 SCP() {
+	local status
+
 	#shellcheck disable=SC2086
-	sshpass -p "${board_password}" scp ${CONFORMANCE_SCP_ARGS} -o StrictHostKeyChecking=no "$@"
+	scp ${CONFORMANCE_SCP_ARGS} -o BatchMode=yes -o PreferredAuthentications=publickey -o StrictHostKeyChecking=no "$@"
+	status=$?
+	if [[ ${status} -ne 255 || -z "${board_password:-}" ]]; then
+		return "${status}"
+	fi
+	command -v sshpass >/dev/null 2>&1 || {
+		echo -e "${RED}Error:${ENDCOLOR} sshpass is required for password authentication"
+		return 127
+	}
+	#shellcheck disable=SC2086
+	SSHPASS="${board_password}" sshpass -e scp ${CONFORMANCE_SCP_ARGS} -o PreferredAuthentications=password,keyboard-interactive -o PubkeyAuthentication=no -o StrictHostKeyChecking=no "$@"
 }
 
 transfer_launch_gapi_tests_script() {

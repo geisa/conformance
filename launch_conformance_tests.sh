@@ -52,6 +52,7 @@ or
 Optional options:
   --user <username>   				Specify the username for the target device (default: root)
   --password <password>  			Specify the password for the target device (default: empty)
+  --key-path <path>    			Specify the SSH private key path (optional)
   --no-reports        				Do not generate test reports (only run tests and display results)
   --no-reboot        				Do not reset the board, skipping the tests that require a reboot
   --baudrate <baudrate> 			Specify the baudrate for the serial port of the board (default: 115200)
@@ -110,6 +111,14 @@ while [[ "$#" -gt 0 ]]; do
 		BOARD_PASSWORD="$2"
 		if [[ -z "${BOARD_PASSWORD}" ]]; then
 			echo -e "${RED}Error:${ENDCOLOR} Password cannot be empty"
+			usage
+		fi
+		shift 2
+		;;
+		--key-path)
+		SSH_KEY_PATH="$2"
+		if [[ -z "${SSH_KEY_PATH}" ]]; then
+			echo -e "${RED}Error:${ENDCOLOR} SSH key path cannot be empty"
 			usage
 		fi
 		shift 2
@@ -187,6 +196,15 @@ while [[ "$#" -gt 0 ]]; do
 		;;
 	esac
 done
+
+if [[ -n "${SSH_KEY_PATH:-}" ]]; then
+	if [[ ! -f "${SSH_KEY_PATH}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} SSH key not found: ${SSH_KEY_PATH}"
+		exit 1
+	fi
+	CONFORMANCE_SSH_ARGS="${CONFORMANCE_SSH_ARGS:-} -i ${SSH_KEY_PATH}"
+	CONFORMANCE_SCP_ARGS="${CONFORMANCE_SCP_ARGS:-} -i ${SSH_KEY_PATH}"
+fi
 
 if [[ -n ${NO_GLEE_TESTS} && -n ${NO_GADM_TESTS} && -n ${NO_GAPI_TESTS} ]]; then
 	echo -e "${RED}Error:${ENDCOLOR} At least one test suite must be executed. Please remove one of the --no-*-tests options."
