@@ -262,7 +262,7 @@ check_waveform_subscribe_success_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.sample_rate_hz !=
-	    (uint32_t)ctx->streams[ctx->stream_index].sample_rate_hz) {
+	    ctx->streams[ctx->stream_index].sample_rate_hz) {
 		fprintf(
 		    stderr,
 		    "[Waveform] Error: waveform response sample_rate_hz does not match discovery sample_rate_hz\n");
