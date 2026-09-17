@@ -52,7 +52,8 @@ or
 Optional options:
   --user <username>   				Specify the username for the target device (default: root)
   --password <password>  			Specify the password for the target device (default: empty)
-  --key-path <path>    			Specify the SSH private key path (optional)
+  --key-path <path>                Specify the SSH private key path (optional)
+	--clean-up                       Clean selected test artifacts from the board and exit
   --no-reports        				Do not generate test reports (only run tests and display results)
   --no-reboot        				Do not reset the board, skipping the tests that require a reboot
   --baudrate <baudrate> 			Specify the baudrate for the serial port of the board (default: 115200)
@@ -122,6 +123,10 @@ while [[ "$#" -gt 0 ]]; do
 			usage
 		fi
 		shift 2
+		;;
+		--clean-up)
+		CLEAN_UP=true
+		shift
 		;;
 		--no-reports)
 		NO_REPORTS=true
@@ -206,6 +211,34 @@ if [[ -n "${SSH_KEY_PATH:-}" ]]; then
 	CONFORMANCE_SCP_ARGS="${CONFORMANCE_SCP_ARGS:-} -i ${SSH_KEY_PATH}"
 fi
 
+BOARD_USER=${BOARD_USER:-root}
+
+if [[ -n "${CLEAN_UP:-}" ]]; then
+	if [[ -z "${BOARD_IP:-}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} --clean-up requires --ip"
+		exit 1
+	fi
+	if [[ -n ${NO_GLEE_TESTS} && -n ${NO_GADM_TESTS} && -n ${NO_GAPI_TESTS} ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} At least one test suite must be selected for cleanup"
+		exit 1
+	fi
+	cleanup_status=0
+	if [[ -z ${NO_GLEE_TESTS} ]]; then
+		( cleanup_glee_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=1
+	fi
+	if [[ -z ${NO_GAPI_TESTS} ]]; then
+		( cleanup_api_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=1
+	fi
+	if [[ -z ${NO_GADM_TESTS} ]]; then
+		( cleanup_gadm_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "" "" \
+			"${ADM_CLIENT_PATH:-/usr/bin/adm_client}" ) || cleanup_status=1
+	fi
+	exit "${cleanup_status}"
+fi
+
 if [[ -n ${NO_GLEE_TESTS} && -n ${NO_GADM_TESTS} && -n ${NO_GAPI_TESTS} ]]; then
 	echo -e "${RED}Error:${ENDCOLOR} At least one test suite must be executed. Please remove one of the --no-*-tests options."
 	usage
@@ -225,8 +258,6 @@ if ! ${NO_REPORTS}; then
 	rm -rf "${TOPDIR}"/reports/*
 fi
 
-BOARD_USER=${BOARD_USER:-root}
-
 if [[ -z ${NO_GLEE_TESTS} ]]; then
 	if [[ -n ${BOARD_IP} ]]; then
 		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
@@ -236,7 +267,8 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 		else
 			launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		fi
-		cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+		cleanup_glee_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" || lee_test_exit_code=1
 	else
 		echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
 		if [[ -n ${APPLICATIONS} ]]; then

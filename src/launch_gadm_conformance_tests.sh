@@ -171,20 +171,26 @@ cleanup_gadm_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
-	local client_pid="$4"
-	local server_pid="$5"
+	local client_pid="${4:-}"
+	local server_pid="${5:-}"
+	local client_path="${6:-/usr/bin/adm_client}"
+	local status=0
 
 	echo ""
 	echo "Cleaning up ADM test client and server processes"
 	echo ""
 	if [[ -n "${client_pid}" ]]; then
-		SSH "kill ${client_pid} >/dev/null 2>&1 || true"
+		SSH "kill ${client_pid} >/dev/null 2>&1 || true" || status=1
+	else
+		SSH "pkill -f '${client_path}' >/dev/null 2>&1 || true" || status=1
 	fi
+	SSH "rm -f /tmp/adm_client.log" || status=1
 
 	if [[ -n "${server_pid}" ]] && kill -0 "${server_pid}" >/dev/null 2>&1; then
 		kill "${server_pid}" >/dev/null 2>&1 || true
 		wait "${server_pid}" 2>/dev/null || true
 	fi
+	return "${status}"
 }
 
 # Register PSK credentials for the ADM client with the Leshan server REST API.

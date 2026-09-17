@@ -237,6 +237,7 @@ reset_board_with_ssh() {
 	echo "Waiting for board to boot"
 	wait_for_board_up "${board_ip}" || {
 		echo -e "${RED}Error:${ENDCOLOR} Board did not come back after reset"
+		echo "Clean up test artifacts with: './launch_conformance_tests.sh --ip ${board_ip} --clean-up'."
 		return 1
 	}
 	SSH "true" >/dev/null 2>&1 || {
@@ -370,7 +371,7 @@ launch_glee_tests_without_report_ssh() {
 	export lee_test_exit_code
 }
 
-cleanup_ssh() {
+cleanup_glee_ssh() {
 	local board_ip="$1"
 	local board_user="$2"
 	local board_password="$3"
