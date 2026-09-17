@@ -89,22 +89,22 @@ disconnect:
 }
 
 /**
- * @brief Converts a GeisaWaveform_Datatype to a GeisaWaveform_SampleType.
+ * @brief Validates a GeisaWaveform_SampleType value.
  *
- * @param sample_type The GeisaWaveform_Datatype to convert
- * @return The corresponding GeisaWaveform_SampleType
+ * @param sample_type The GeisaWaveform_SampleType to validate
+ * @return The validated GeisaWaveform_SampleType
  */
 static GeisaWaveform_SampleType
-get_sample_type(GeisaWaveform_Datatype sample_type)
+get_sample_type(GeisaWaveform_SampleType sample_type)
 {
 	switch (sample_type) {
-	case GeisaWaveform_Datatype_DATA_INT16:
+	case GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_INT16:
 		return GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_INT16;
-	case GeisaWaveform_Datatype_DATA_INT32:
+	case GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_INT32:
 		return GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_INT32;
-	case GeisaWaveform_Datatype_DATA_FLOAT32:
+	case GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_FLOAT32:
 		return GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_FLOAT32;
-	case GeisaWaveform_Datatype_DATA_FLOAT64:
+	case GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_FLOAT64:
 		return GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_FLOAT64;
 	default:
 		return GeisaWaveform_SampleType_WAVEFORM_SAMPLE_TYPE_UNSPECIFIED;
@@ -230,26 +230,26 @@ check_waveform_subscribe_success_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.sample_type !=
-	    get_sample_type(ctx->streams[ctx->stream_index].datatype)) {
+	    get_sample_type(ctx->streams[ctx->stream_index].sample_type)) {
 		fprintf(
 		    stderr,
-		    "[Waveform] Error: waveform response sample_type does not match discovery datatype\n");
+		    "[Waveform] Error: waveform response sample_type does not match discovery sample_type\n");
 		test_result = EXIT_FAILURE;
 	}
 
 	if (response.voltage_channel_count !=
-	    ctx->streams[ctx->stream_index].num_voltage_ch) {
+	    ctx->streams[ctx->stream_index].voltage_channel_count) {
 		fprintf(
 		    stderr,
-		    "[Waveform] Error: waveform response voltage_channel_count does not match discovery num_voltage_ch\n");
+		    "[Waveform] Error: waveform response voltage_channel_count does not match discovery voltage_channel_count\n");
 		test_result = EXIT_FAILURE;
 	}
 
 	if (response.current_channel_count !=
-	    ctx->streams[ctx->stream_index].num_current_ch) {
+	    ctx->streams[ctx->stream_index].current_channel_count) {
 		fprintf(
 		    stderr,
-		    "[Waveform] Error: waveform response current_channel_count does not match discovery num_current_ch\n");
+		    "[Waveform] Error: waveform response current_channel_count does not match discovery current_channel_count\n");
 		test_result = EXIT_FAILURE;
 	}
 
@@ -262,10 +262,10 @@ check_waveform_subscribe_success_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.sample_rate_hz !=
-	    (uint32_t)ctx->streams[ctx->stream_index].sample_rate) {
+	    (uint32_t)ctx->streams[ctx->stream_index].sample_rate_hz) {
 		fprintf(
 		    stderr,
-		    "[Waveform] Error: waveform response sample_rate_hz does not match discovery sample_rate\n");
+		    "[Waveform] Error: waveform response sample_rate_hz does not match discovery sample_rate_hz\n");
 		test_result = EXIT_FAILURE;
 	}
 
@@ -302,18 +302,18 @@ check_waveform_subscribe_success_message(struct mosquitto *mosq, void *obj,
 	}
 
 	if (response.voltage_scale !=
-	    ctx->streams[ctx->stream_index].voltage_multiplier) {
+	    ctx->streams[ctx->stream_index].voltage_scale) {
 		fprintf(
 		    stderr,
-		    "[Waveform] Error: waveform response voltage_scale does not match discovery voltage_multiplier\n");
+		    "[Waveform] Error: waveform response voltage_scale does not match discovery voltage_scale\n");
 		test_result = EXIT_FAILURE;
 	}
 
 	if (response.current_scale !=
-	    ctx->streams[ctx->stream_index].current_multiplier) {
+	    ctx->streams[ctx->stream_index].current_scale) {
 		fprintf(
 		    stderr,
-		    "[Waveform] Error: waveform response current_scale does not match discovery current_multiplier\n");
+		    "[Waveform] Error: waveform response current_scale does not match discovery current_scale\n");
 		test_result = EXIT_FAILURE;
 	}
 

@@ -655,10 +655,11 @@ check_discovery_waveform_message(struct mosquitto *mosq, void *obj,
 			}
 			uint32_t total_channel_count =
 			    response.waveform.streams[loop_index]
-				.num_voltage_ch +
+				.voltage_channel_count +
 			    response.waveform.streams[loop_index]
-				.num_current_ch +
-			    response.waveform.streams[loop_index].num_other_ch;
+				.current_channel_count +
+			    response.waveform.streams[loop_index]
+				.other_channel_count;
 			if (total_channel_count !=
 			    response.waveform.streams[loop_index]
 				.total_channel_count) {

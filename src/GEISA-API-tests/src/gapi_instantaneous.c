@@ -93,47 +93,47 @@ check_meter_instantaneous_response(struct instantaneous_test_ctx *ctx,
 				   GeisaInstantaneousQuantities *response)
 {
 	if (ctx->phase_count == 1) {
-		if (response->has_phase_A == false) {
+		if (response->has_phase_a == false) {
 			fprintf(
 			    stderr,
-			    "[Instantaneous] Error: single phase meter instantaneous response missing phase_A message\n");
+			    "[Instantaneous] Error: single phase meter instantaneous response missing phase_a message\n");
 			ctx->test_result = EXIT_FAILURE;
 		}
 	} else if (ctx->phase_count == 2) {
-		if (response->has_phase_A == false) {
+		if (response->has_phase_a == false) {
 			fprintf(
 			    stderr,
-			    "[Instantaneous] Error: two phase meter instantaneous response missing phase_A message\n");
+			    "[Instantaneous] Error: two phase meter instantaneous response missing phase_a message\n");
 			ctx->test_result = EXIT_FAILURE;
 		}
-		if (response->has_phase_B == false) {
+		if (response->has_phase_b == false) {
 			fprintf(
 			    stderr,
-			    "[Instantaneous] Error: two phase meter instantaneous response missing phase_B message\n");
+			    "[Instantaneous] Error: two phase meter instantaneous response missing phase_b message\n");
 			ctx->test_result = EXIT_FAILURE;
 		}
 	} else if (ctx->phase_count == 3) {
-		if (response->has_phase_A == false) {
+		if (response->has_phase_a == false) {
 			fprintf(
 			    stderr,
-			    "[Instantaneous] Error: three phase meter instantaneous response missing phase_A message\n");
+			    "[Instantaneous] Error: three phase meter instantaneous response missing phase_a message\n");
 			ctx->test_result = EXIT_FAILURE;
 		}
-		if (response->has_phase_B == false) {
+		if (response->has_phase_b == false) {
 			fprintf(
 			    stderr,
-			    "[Instantaneous] Error: three phase meter instantaneous response missing phase_B message\n");
+			    "[Instantaneous] Error: three phase meter instantaneous response missing phase_b message\n");
 			ctx->test_result = EXIT_FAILURE;
 		}
-		if (response->has_phase_C == false) {
+		if (response->has_phase_c == false) {
 			fprintf(
 			    stderr,
-			    "[Instantaneous] Error: three phase meter instantaneous response missing phase_C message\n");
+			    "[Instantaneous] Error: three phase meter instantaneous response missing phase_c message\n");
 			ctx->test_result = EXIT_FAILURE;
 		}
 	}
 	if (ctx->neutral_connected) {
-		if (response->has_phase_N == false) {
+		if (response->has_phase_n == false) {
 			fprintf(
 			    stderr,
 			    "[Instantaneous] Error: meter with neutral connected instantaneous response missing neutral message\n");
@@ -176,7 +176,7 @@ static void check_instantaneous_message(struct mosquitto *mosq, void *obj,
 		goto disconnect;
 	}
 
-	if (response.timestamp == 0) {
+	if (response.timestamp_us == 0) {
 		fprintf(
 		    stderr,
 		    "[Instantaneous] Error: instantaneous response missing timestamp information\n");
