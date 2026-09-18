@@ -8,15 +8,10 @@ APPLICATIONS="${APPLICATIONS:-}"
 LXC_PATH="${LXC_PATH:-}"
 REFERENCE_APPLICATION="${REFERENCE_APPLICATION:-}"
 LEE_TESTS_DIR="${LEE_TESTS_DIR:-}"
-APPLICATION_IMAGE_PATH="${APPLICATION_IMAGE_PATH:-}"
 APPLICATION_MANIFEST_PATH="${APPLICATION_MANIFEST_PATH:-}"
 REFERENCE_LXC_CPUSET_CPUS="${REFERENCE_LXC_CPUSET_CPUS:-}"
 REFERENCE_LXC_CPU_WEIGHT="${REFERENCE_LXC_CPU_WEIGHT:-}"
-ROOTFS_PATH="${ROOTFS_PATH:-}"
-BASE_LAYER_PATH="${BASE_LAYER_PATH:-}"
-APPLICATION_LAYER_PATH="${APPLICATION_LAYER_PATH:-}"
 REBOOT_PERSISTENCE_MARKER="${REBOOT_PERSISTENCE_MARKER:-}"
-PERSISTENT_IMAGE_PATH="${PERSISTENT_IMAGE_PATH:-}"
 PRIVILEGED_COMMAND="${PRIVILEGED_COMMAND:-}"
 
 # Mount points and journaling filesystem expectations are mandated by the GEISA
@@ -274,9 +269,11 @@ EOF
 }
 
 #######################################
-# Run manage_package.py with the conformance configuration loaded.
+# Run manage_package.py for one application, with its resolved host layout.
 #######################################
 manage_package() {
+    local app="$1"
+    shift
     (
         export APPLICATIONS LXC_PATH REFERENCE_APPLICATION
         export CONTAINER_BASE_IMAGE CONTAINER_BASE_IMAGE_DIR CONTAINER_BASE_IMAGE_GLOB
@@ -285,30 +282,9 @@ manage_package() {
         export REFERENCE_LXC_CPUSET_CPUS REFERENCE_LXC_CPUSET_MEMS
         export REFERENCE_LXC_CPU_PERCENT REFERENCE_LXC_CPU_WEIGHT REFERENCE_LXC_MEMORY_KIB
         export REFERENCE_LXC_PERSISTENT_KIB REFERENCE_LXC_NONPERSISTENT_KIB
-        export BASE_LAYER_PATH APPLICATION_LAYER_PATH CONFIGURATION_LAYER_PATH
-        export UPPER_PATH WORK_PATH ROOTFS_PATH APPLICATION_IMAGE_PATH PERSISTENT_IMAGE_PATH
+        export_application_layout "${app}"
         host_exec python3 "${LEE_TESTS_DIR}/manage_package.py" "$@"
     ) >/dev/null 2>&1
-}
-
-#######################################
-# Run manage_package.py for an isolated peer with separate absolute resources.
-#######################################
-manage_isolation_peer_package() {
-    local peer="$1" peer_root
-    local BASE_LAYER_PATH APPLICATION_LAYER_PATH CONFIGURATION_LAYER_PATH
-    local UPPER_PATH WORK_PATH ROOTFS_PATH APPLICATION_IMAGE_PATH PERSISTENT_IMAGE_PATH
-    shift
-    peer_root="$(container_path "${peer}")"
-    export BASE_LAYER_PATH="${peer_root}/base"
-    export APPLICATION_LAYER_PATH="${peer_root}/application"
-    export CONFIGURATION_LAYER_PATH="${peer_root}/configuration"
-    export UPPER_PATH="${peer_root}/upper"
-    export WORK_PATH="${peer_root}/work"
-    export ROOTFS_PATH="${peer_root}/rootfs"
-    export APPLICATION_IMAGE_PATH="${peer_root}/packages/application.squashfs"
-    export PERSISTENT_IMAGE_PATH="${peer_root}/persistent.img"
-    manage_package "$@"
 }
 
 #######################################
@@ -316,11 +292,11 @@ manage_isolation_peer_package() {
 #######################################
 provision_isolation_peer() {
     local source_app="$1" peer="$2" image manifest
-    image="${APPLICATION_IMAGE_PATH}"
+    image="$(layout_application_image_path "${source_app}")"
     manifest="$(container_path "${source_app}")/manifest.json"
     test -f "${image}" && test -f "${manifest}" || return 1
-    manage_isolation_peer_package "${peer}" install --name "${peer}" "${image}" "${manifest}" || return 1
-    if ! manage_isolation_peer_package "${peer}" activate "${peer}"; then
+    manage_package "${peer}" install --name "${peer}" "${image}" "${manifest}" || return 1
+    if ! manage_package "${peer}" activate "${peer}"; then
         deprovision_isolation_peer "${peer}"
         return 1
     fi
@@ -331,7 +307,7 @@ provision_isolation_peer() {
 # Remove a temporary isolation-test peer.
 #######################################
 deprovision_isolation_peer() {
-    manage_isolation_peer_package "$1" uninstall "$1"
+    manage_package "$1" uninstall "$1"
 }
 
 #######################################
@@ -425,7 +401,7 @@ check_containers_are_isolated() {
         pid="$(container_init_pid "${app}")" || return 1
         namespace="$(host_exec readlink "/proc/${pid}/ns/pid")" || return 1
         test "${namespace}" != "${host_namespace}" || return 1
-        root="${ROOTFS_PATH}"
+        root="$(layout_rootfs_path "${app}")"
         test -d "${root}" || return 1
         case " ${roots} " in
             *" ${root} "*) return 1 ;;
@@ -632,7 +608,7 @@ check_container_storage_limit() {
     esac
     collect_application_limits || return 1
     for app in ${APPLICATIONS}; do
-        mount_point="${ROOTFS_PATH}${mount_path}"
+        mount_point="$(layout_rootfs_path "${app}")${mount_path}"
         declared_kib="$(get_application_limit "${app}" "${storage_kind}")" || return 1
         case "${declared_kib}" in
             *[!0-9]*|'') return 1 ;;
@@ -660,21 +636,72 @@ check_container_storage_limit() {
 }
 
 #######################################
-# Verify that a required image layer is mounted in every container.
+# Report whether an application uses the example host-side layout.
+#
+# A platform that composes the container root differently has no such
+# directory, and only the container-visible checks apply to it.
+#######################################
+uses_example_layout() {
+    local base_layer
+    base_layer="$(layout_base_layer_path "$1")" || return 1
+    test -d "${base_layer}"
+}
+
+#######################################
+# Build the command that checks for platform-provided base image content.
+#######################################
+container_base_content_command() {
+    local directory library_test=""
+    for directory in ${CONTAINER_LIBRARY_DIRECTORIES}; do
+        library_test="${library_test:+${library_test} || }test -d '${directory}'"
+    done
+    printf "test -x /bin/sh && test -d /etc && { %s; }\n" "${library_test}"
+}
+
+#######################################
+# Build the command that checks for the application's declared entry point.
+#
+# The entry point is started from the container root, so it is resolved from
+# there, or through PATH when the manifest gives a bare name.
+#######################################
+container_entry_point_command() {
+    local entry_point
+    entry_point="$(container_backend launch-command "$1")" || return 1
+    case "${entry_point}" in
+        '') return 1 ;;
+        */*) printf "cd / && test -x '%s'\n" "${entry_point}" ;;
+        *) printf "cd / && command -v '%s' >/dev/null 2>&1\n" "${entry_point}" ;;
+    esac
+}
+
+#######################################
+# Verify that a required image is incorporated into every container filesystem.
+#
+# The requirement is on what the container sees. The host-side mount point is
+# only checked for applications that use the example layout.
 #######################################
 check_container_image_layer() {
-    local layer_kind="$1" layer_path app layer container_state_value
+    local layer_kind="$1" app layer_path content_command container_state_value
     case "${layer_kind}" in
-        base) layer_path="${BASE_LAYER_PATH}" ;;
-        application) layer_path="${APPLICATION_LAYER_PATH}" ;;
+        base|application) : ;;
         *) return 2 ;;
     esac
     for app in ${APPLICATIONS}; do
         container_state_value="$(container_state "${app}")" || return 1
         test "${container_state_value}" = RUNNING || return 1
-        layer="${layer_path}"
-        test -d "${layer}" || return 1
-        mountpoint -q "${layer}" || return 1
+        case "${layer_kind}" in
+            base) content_command="$(container_base_content_command)" || return 1 ;;
+            application) content_command="$(container_entry_point_command "${app}")" || return 1 ;;
+            *) return 2 ;;
+        esac
+        container_run_command "${app}" "${content_command}" || return 1
+        uses_example_layout "${app}" || continue
+        case "${layer_kind}" in
+            base) layer_path="$(layout_base_layer_path "${app}")" ;;
+            application) layer_path="$(layout_application_layer_path "${app}")" ;;
+            *) return 2 ;;
+        esac
+        mountpoint -q "${layer_path}" || return 1
     done
     return 0
 }
@@ -746,9 +773,9 @@ restore_container_states() {
     test -f "${CONTAINER_STATE_FILE}" || return 0
     while read -r app state; do
         if test "${state}" = RUNNING; then
-            manage_package activate "${app}"
+            manage_package "${app}" activate "${app}"
         else
-            manage_package deactivate "${app}"
+            manage_package "${app}" deactivate "${app}"
         fi
     done < "${CONTAINER_STATE_FILE}"
     rm -f "${CONTAINER_STATE_FILE}"
@@ -826,11 +853,14 @@ is_journaling_filesystem() {
 
 #######################################
 # Verify journaling and metadata-integrity settings for persistent storage.
+#
+# The filesystem is read through the device backing the mount, so a loopback
+# image and a real partition are both covered.
 #######################################
 check_container_persistent_journaling() {
-    local app mount_point mount_source filesystem mount_options image filesystem_metadata checksum
+    local app mount_point mount_source filesystem mount_options filesystem_metadata checksum
     for app in ${APPLICATIONS}; do
-        mount_point="${ROOTFS_PATH}${CONTAINER_PERSISTENT_MOUNT}"
+        mount_point="$(layout_rootfs_path "${app}")${CONTAINER_PERSISTENT_MOUNT}"
         mount_source="$(awk -v path="${mount_point}" '$2 == path { print $1; exit }' /proc/mounts)"
         filesystem="$(awk -v path="${mount_point}" '$2 == path { print $3; exit }' /proc/mounts)"
         mount_options="$(awk -v path="${mount_point}" '$2 == path { print $4; exit }' /proc/mounts)"
@@ -844,11 +874,10 @@ check_container_persistent_journaling() {
 
         case "${filesystem}" in
             ext3|ext4)
-                image="${PERSISTENT_IMAGE_PATH}"
                 if command -v dumpe2fs >/dev/null 2>&1; then
-                    filesystem_metadata="$(host_exec dumpe2fs -h "${image}" 2>/dev/null)" || return 1
+                    filesystem_metadata="$(host_exec dumpe2fs -h "${mount_source}" 2>/dev/null)" || return 1
                 elif command -v tune2fs >/dev/null 2>&1; then
-                    filesystem_metadata="$(host_exec tune2fs -l "${image}" 2>/dev/null)" || return 1
+                    filesystem_metadata="$(host_exec tune2fs -l "${mount_source}" 2>/dev/null)" || return 1
                 else
                     return 1
                 fi

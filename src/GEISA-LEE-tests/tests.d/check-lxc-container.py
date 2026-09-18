@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 
@@ -67,6 +68,19 @@ def storage_limit(app_name: str, field: str) -> object:
     """
     limit = read_manifest(app_name)["resources"][f"storage-{field}"]
     return limit
+
+
+def launch_command(app_name: str) -> str:
+    """Read the entry point an application declares in its manifest.
+
+    Args:
+        app_name: Installed application name.
+    """
+    launch = read_manifest(app_name)["default-launch-strategy"]
+    words = shlex.split(launch.get("start-string", "/sbin/init"))
+    if not words:
+        raise ValueError("application start-string cannot be empty")
+    return words[0]
 
 
 def storage_limits() -> list[str]:
@@ -515,6 +529,11 @@ def parse_arguments() -> argparse.Namespace:
         "storage-limits", help="print every application storage limit as application|field|value"
     )
 
+    launch = commands.add_parser(
+        "launch-command", help="print the entry point declared in an application manifest"
+    )
+    launch.add_argument("application")
+
     network = commands.add_parser("network", help="check direct network policy")
     network.add_argument("check", choices=tuple(NETWORK_CHECKS))
 
@@ -539,6 +558,8 @@ def main() -> int:
             print(storage_limit(arguments.application, arguments.field))
         elif arguments.command == "storage-limits":
             print("\n".join(storage_limits()))
+        elif arguments.command == "launch-command":
+            print(launch_command(arguments.application))
     except (KeyError, OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
         print(f"check-lxc-container: {error}", file=sys.stderr)
         return 1

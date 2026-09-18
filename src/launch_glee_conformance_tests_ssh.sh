@@ -91,11 +91,13 @@ provision_reference_application() {
 	}
 	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
+		export_application_layout '${app_name}'; \
 		\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py install \
 		'/tmp/conformance_tests/glee-apps/$(basename "${image}")' \
 		'${manifest_path}'" || return 1
 	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
+		export_application_layout '${app_name}'; \
 		\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py activate '${app_name}'"
 }
 
@@ -257,6 +259,7 @@ restore_glee_apps_with_ssh() {
 		fi
 		SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 			. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
+			export_application_layout '${app_name}'; \
 			\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py activate '${app_name}'" || {
 			echo -e "${RED}Error:${ENDCOLOR} Application did not restart after reset: ${app_name}"
 			return 1
@@ -270,6 +273,7 @@ deactivate_glee_apps_with_ssh() {
 	for app_name in ${APPLICATIONS}; do
 		SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 			. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
+			export_application_layout '${app_name}'; \
 			\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py deactivate '${app_name}'" || {
 			echo -e "${RED}Error:${ENDCOLOR} Application did not deactivate before reset: ${app_name}"
 			return 1
@@ -382,16 +386,17 @@ cleanup_glee_ssh() {
 	app_dir="${LXC_PATH}/${REFERENCE_APPLICATION}"
 
 	print_cleanup_paths() {
+		local resolver label path
 		printf '  Application directory: %s\n' "${app_dir}"
 		printf '  Manifest path: %s\n' "${APPLICATION_MANIFEST_PATH:-}"
-		printf '  Base layer path: %s\n' "${BASE_LAYER_PATH:-}"
-		printf '  Application layer path: %s\n' "${APPLICATION_LAYER_PATH:-}"
-		printf '  Configuration layer path: %s\n' "${CONFIGURATION_LAYER_PATH:-}"
-		printf '  Upper path: %s\n' "${UPPER_PATH:-}"
-		printf '  Work path: %s\n' "${WORK_PATH:-}"
-		printf '  Rootfs path: %s\n' "${ROOTFS_PATH:-}"
-		printf '  Application image path: %s\n' "${APPLICATION_IMAGE_PATH:-}"
-		printf '  Persistent image path: %s\n' "${PERSISTENT_IMAGE_PATH:-}"
+		for resolver in layout_base_layer_path layout_application_layer_path \
+			layout_configuration_layer_path layout_upper_path layout_work_path \
+			layout_rootfs_path layout_application_image_path layout_persistent_image_path; do
+			path="$("${resolver}" "${REFERENCE_APPLICATION}")"
+			label="${resolver#layout_}"
+			label="${label//_/ }"
+			printf '  %s: %s\n' "${label^}" "${path}"
+		done
 		printf '  Test runtime directory: /tmp/conformance_tests\n'
 	}
 
@@ -411,6 +416,7 @@ cleanup_glee_ssh() {
 				cat "${topdir}/src/GEISA-LEE-tests/tests_configuration.conf"
 				cat "${topdir}/src/GEISA-LEE-tests/user_configuration.conf"
 				echo "set +a"
+				echo "export_application_layout '${app_name}'"
 				echo "\${PRIVILEGED_COMMAND} python3 - uninstall '${app_name}' <<'PYTHON'"
 				cat "${topdir}/src/GEISA-LEE-tests/manage_package.py"
 				echo "PYTHON"
