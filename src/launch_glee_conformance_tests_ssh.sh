@@ -91,12 +91,12 @@ provision_reference_application() {
 	}
 	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
-		python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py install \
+		\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py install \
 		'/tmp/conformance_tests/glee-apps/$(basename "${image}")' \
 		'${manifest_path}'" || return 1
 	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
-		python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py activate '${app_name}'"
+		\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py activate '${app_name}'"
 }
 
 connect_and_transfer_with_ssh() {
@@ -250,12 +250,14 @@ restore_glee_apps_with_ssh() {
 	local board_ip="$1" board_user="$2" board_password="$3" app_name
 
 	for app_name in ${APPLICATIONS}; do
-		if SSH "test \"\$(lxc-info -P '${LXC_PATH:-}' -n '${app_name}' -sH)\" = RUNNING"; then
+		if SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
+			. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
+			test \"\$(\${PRIVILEGED_COMMAND} lxc-info -P '${LXC_PATH:-}' -n '${app_name}' -sH)\" = RUNNING"; then
 			continue
 		fi
 		SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 			. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
-			python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py activate '${app_name}'" || {
+			\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py activate '${app_name}'" || {
 			echo -e "${RED}Error:${ENDCOLOR} Application did not restart after reset: ${app_name}"
 			return 1
 		}
@@ -268,7 +270,7 @@ deactivate_glee_apps_with_ssh() {
 	for app_name in ${APPLICATIONS}; do
 		SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 			. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
-			python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py deactivate '${app_name}'" || {
+			\${PRIVILEGED_COMMAND} python3 /tmp/conformance_tests/GEISA-LEE-tests/manage_package.py deactivate '${app_name}'" || {
 			echo -e "${RED}Error:${ENDCOLOR} Application did not deactivate before reset: ${app_name}"
 			return 1
 		}
@@ -409,14 +411,16 @@ cleanup_glee_ssh() {
 				cat "${topdir}/src/GEISA-LEE-tests/tests_configuration.conf"
 				cat "${topdir}/src/GEISA-LEE-tests/user_configuration.conf"
 				echo "set +a"
-				echo "python3 - uninstall '${app_name}' <<'PYTHON'"
+				echo "\${PRIVILEGED_COMMAND} python3 - uninstall '${app_name}' <<'PYTHON'"
 				cat "${topdir}/src/GEISA-LEE-tests/manage_package.py"
 				echo "PYTHON"
 			})"
 			SSH "sh -s" <<< "${cleanup_input}" || status=1
 		fi
 	done
-	SSH "rm -rf /tmp/conformance_tests '${APPLICATION_MANIFEST_PATH}' '${LXC_PATH}'" || status=1
+	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
+		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
+		\${PRIVILEGED_COMMAND} rm -rf /tmp/conformance_tests '${APPLICATION_MANIFEST_PATH}' '${LXC_PATH}'" || status=1
 	if [[ ${status} -ne 0 ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up LEE test artifacts on board"
 		echo "Manual cleanup required: de-provision '${REFERENCE_APPLICATION}' and unmount its filesystems, then remove '${app_dir}' and '/tmp/conformance_tests' on the board."

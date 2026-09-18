@@ -50,6 +50,30 @@ check_privileged_access() {
 }
 
 #######################################
+# Run a test only when host and container inspection is available.
+#######################################
+privileged_test_id() {
+    local test_identifier="$1" test_description="$3"
+    if has_privileged_access && [[ -z "${__skip_condition:-}" ]]; then
+        test_id "$@"
+        return
+    fi
+    if [[ -n "${__skip_condition:-}" ]]; then
+        test_id "${test_identifier}" as "${test_description}" cukinia_cmd true
+    else
+        when "has_privileged_access" test_id "${test_identifier}" \
+            as "${test_description}" cukinia_cmd true
+    fi
+}
+
+#######################################
+# Report whether privileged tests are qualified to run.
+#######################################
+has_privileged_access() {
+    test "${PRIVILEGED_ACCESS_AVAILABLE:-false}" = true
+}
+
+#######################################
 # Attach and run a command inside an application container.
 #######################################
 container_exec() {
@@ -498,6 +522,7 @@ check_container_read_write_permissions() {
 #######################################
 is_any_container_root_read_write() {
     local app
+    has_privileged_access || return 1
     if [[ "${ROOT_WRITE_STATE_KNOWN:-}" = true ]]; then
         [[ "${ANY_CONTAINER_ROOT_READ_WRITE:-}" = true ]]
         return
@@ -682,6 +707,7 @@ check_container_network_volume_limit() {
 # Determine whether any application manifest grants direct network access.
 #######################################
 has_container_network_grant() {
+    has_privileged_access || return 1
     container_backend has-network-grant
 }
 
