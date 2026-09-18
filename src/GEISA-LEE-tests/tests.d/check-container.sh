@@ -17,6 +17,7 @@ BASE_LAYER_PATH="${BASE_LAYER_PATH:-}"
 APPLICATION_LAYER_PATH="${APPLICATION_LAYER_PATH:-}"
 REBOOT_PERSISTENCE_MARKER="${REBOOT_PERSISTENCE_MARKER:-}"
 PERSISTENT_IMAGE_PATH="${PERSISTENT_IMAGE_PATH:-}"
+PRIVILEGED_COMMAND="${PRIVILEGED_COMMAND:-}"
 
 # Mount points and journaling filesystem expectations are mandated by the GEISA
 # specification and are not configurable.
@@ -28,12 +29,33 @@ CONTAINER_LIBRARY_DIRECTORIES="/lib /usr/lib /lib64 /usr/lib64 /usr/local/lib"
 CONTAINER_SIZED_MOUNTS="/ ${CONTAINER_NONPERSISTENT_MOUNT} ${CONTAINER_PERSISTENT_MOUNT}"
 
 #######################################
+# Run a command that needs platform privilege, under PRIVILEGED_COMMAND.
+#######################################
+host_exec() {
+    local -a wrapper
+    if test -z "${PRIVILEGED_COMMAND}"; then
+        "$@"
+        return
+    fi
+    read -r -a wrapper <<< "${PRIVILEGED_COMMAND}"
+    "${wrapper[@]}" "$@"
+}
+
+#######################################
+# Report whether the test account can inspect host and container state.
+#######################################
+check_privileged_access() {
+    host_exec readlink /proc/1/ns/pid >/dev/null 2>&1 || return 1
+    host_exec lxc-info --version >/dev/null 2>&1
+}
+
+#######################################
 # Attach and run a command inside an application container.
 #######################################
 container_exec() {
     local app="$1"
     shift
-    lxc-attach -P "${LXC_PATH}" -n "${app}" -- "$@"
+    host_exec lxc-attach -P "${LXC_PATH}" -n "${app}" -- "$@"
 }
 
 #######################################
@@ -86,14 +108,14 @@ EOF
 # Get the init PID for an application container.
 #######################################
 container_init_pid() {
-    lxc-info -P "${LXC_PATH}" -n "$1" -pH
+    host_exec lxc-info -P "${LXC_PATH}" -n "$1" -pH
 }
 
 #######################################
 # Get the LXC state for an application container.
 #######################################
 container_state() {
-    lxc-info -P "${LXC_PATH}" -n "$1" -sH
+    host_exec lxc-info -P "${LXC_PATH}" -n "$1" -sH
 }
 
 #######################################
@@ -107,9 +129,9 @@ container_path() {
 # Restart an application container and wait for it to run.
 #######################################
 container_restart() {
-    lxc-stop -P "${LXC_PATH}" -n "$1" -k || return 1
-    lxc-start -P "${LXC_PATH}" -n "$1" -d || return 1
-    lxc-wait -P "${LXC_PATH}" -n "$1" -s RUNNING -t 30
+    host_exec lxc-stop -P "${LXC_PATH}" -n "$1" -k || return 1
+    host_exec lxc-start -P "${LXC_PATH}" -n "$1" -d || return 1
+    host_exec lxc-wait -P "${LXC_PATH}" -n "$1" -s RUNNING -t 30
 }
 
 #######################################
@@ -120,7 +142,7 @@ container_backend() {
         LXC_PATH="${LXC_PATH}" \
     APPLICATION_MANIFEST_PATH="${APPLICATION_MANIFEST_PATH}" \
         REFERENCE_APPLICATION="${REFERENCE_APPLICATION}" \
-        python3 "${LEE_TESTS_DIR}/tests.d/check-lxc-container.py" "$@"
+        host_exec python3 "${LEE_TESTS_DIR}/tests.d/check-lxc-container.py" "$@"
 }
 
 #######################################
@@ -241,7 +263,7 @@ manage_package() {
         export REFERENCE_LXC_PERSISTENT_KIB REFERENCE_LXC_NONPERSISTENT_KIB
         export BASE_LAYER_PATH APPLICATION_LAYER_PATH CONFIGURATION_LAYER_PATH
         export UPPER_PATH WORK_PATH ROOTFS_PATH APPLICATION_IMAGE_PATH PERSISTENT_IMAGE_PATH
-        exec python3 "${LEE_TESTS_DIR}/manage_package.py" "$@"
+        host_exec python3 "${LEE_TESTS_DIR}/manage_package.py" "$@"
     ) >/dev/null 2>&1
 }
 
@@ -303,9 +325,9 @@ compare_container_namespaces() {
     first_pid="$(container_init_pid "${first_app}")" || return 1
     second_pid="$(container_init_pid "${second_app}")" || return 1
     for namespace in mnt pid ipc uts net; do
-        host_namespace="$(readlink "/proc/1/ns/${namespace}")" || return 1
-        first_namespace="$(readlink "/proc/${first_pid}/ns/${namespace}")" || return 1
-        second_namespace="$(readlink "/proc/${second_pid}/ns/${namespace}")" || return 1
+        host_namespace="$(host_exec readlink "/proc/1/ns/${namespace}")" || return 1
+        first_namespace="$(host_exec readlink "/proc/${first_pid}/ns/${namespace}")" || return 1
+        second_namespace="$(host_exec readlink "/proc/${second_pid}/ns/${namespace}")" || return 1
         test "${first_namespace}" != "${host_namespace}" || return 1
         test "${second_namespace}" != "${host_namespace}" || return 1
         test "${first_namespace}" != "${second_namespace}" || return 1
@@ -352,10 +374,11 @@ check_container_namespaces_are_isolated() {
 # Check one cgroup constraint for every configured application.
 #######################################
 check_all_container_cgroup_constraints() {
-    local constraint="$1" app pid cgroup
+    local constraint="$1" app pid cgroup cgroup_entries
     for app in ${APPLICATIONS}; do
         pid="$(container_init_pid "${app}")" || return 1
-        cgroup="$(awk -F: '$1 == "0" && $2 == "" { print $3; exit }' "/proc/${pid}/cgroup")"
+        cgroup_entries="$(host_exec cat "/proc/${pid}/cgroup")" || return 1
+        cgroup="$(awk -F: '$1 == "0" && $2 == "" { print $3; exit }' <<< "${cgroup_entries}")"
         test -n "${cgroup}" && test "${cgroup}" != / || return 1
         container_backend cgroup \
             "${constraint}" "${pid}" "${app}" \
@@ -370,13 +393,13 @@ check_all_container_cgroup_constraints() {
 #######################################
 check_containers_are_isolated() {
     local app pid namespace host_namespace roots root container_state_value
-    host_namespace="$(readlink /proc/1/ns/pid)"
+    host_namespace="$(host_exec readlink /proc/1/ns/pid)"
     roots=""
     for app in ${APPLICATIONS}; do
         container_state_value="$(container_state "${app}")" || return 1
         test "${container_state_value}" = RUNNING || return 1
         pid="$(container_init_pid "${app}")" || return 1
-        namespace="$(readlink "/proc/${pid}/ns/pid")" || return 1
+        namespace="$(host_exec readlink "/proc/${pid}/ns/pid")" || return 1
         test "${namespace}" != "${host_namespace}" || return 1
         root="${ROOTFS_PATH}"
         test -d "${root}" || return 1
@@ -590,17 +613,17 @@ check_container_storage_limit() {
             *[!0-9]*|'') return 1 ;;
             *) : ;;
         esac
-        mount_target="$(findmnt -n -o TARGET --target "${mount_point}")" || return 1
-        mount_target_real="$(readlink -f "${mount_target}")" || return 1
-        mount_point_real="$(readlink -f "${mount_point}")" || return 1
+        mount_target="$(host_exec findmnt -n -o TARGET --target "${mount_point}")" || return 1
+        mount_target_real="$(host_exec readlink -f "${mount_target}")" || return 1
+        mount_point_real="$(host_exec readlink -f "${mount_point}")" || return 1
         test "${mount_target_real}" = "${mount_point_real}" || return 1
         if test "${declared_kib}" -eq 0; then
-            case "$(findmnt -n -o OPTIONS --target "${mount_point}")" in
+            case "$(host_exec findmnt -n -o OPTIONS --target "${mount_point}")" in
                 ro|ro,*) continue ;;
                 *) return 1 ;;
             esac
         fi
-        df_output="$(df -Pk "${mount_point}")" || return 1
+        df_output="$(host_exec df -Pk "${mount_point}")" || return 1
         actual_kib="$(awk 'END {print $2}' <<< "${df_output}")"
         case "${actual_kib}" in
             *[!0-9]*|'') return 1 ;;
@@ -671,7 +694,7 @@ check_container_logging() {
         marker="geisa-conformance-${app}-$$"
         logging_command="test -S /dev/log && logger -t geisa-conformance '${marker}'"
         container_run_command "${app}" "${logging_command}" || return 1
-        { journalctl --no-pager -n 200 2>/dev/null || true; cat /var/log/messages /var/log/syslog 2>/dev/null || true; } |
+        { host_exec journalctl --no-pager -n 200 2>/dev/null || true; host_exec cat /var/log/messages /var/log/syslog 2>/dev/null || true; } |
             grep -qF "${marker}" || return 1
     done
     return 0
@@ -797,9 +820,9 @@ check_container_persistent_journaling() {
             ext3|ext4)
                 image="${PERSISTENT_IMAGE_PATH}"
                 if command -v dumpe2fs >/dev/null 2>&1; then
-                    filesystem_metadata="$(dumpe2fs -h "${image}" 2>/dev/null)" || return 1
+                    filesystem_metadata="$(host_exec dumpe2fs -h "${image}" 2>/dev/null)" || return 1
                 elif command -v tune2fs >/dev/null 2>&1; then
-                    filesystem_metadata="$(tune2fs -l "${image}" 2>/dev/null)" || return 1
+                    filesystem_metadata="$(host_exec tune2fs -l "${image}" 2>/dev/null)" || return 1
                 else
                     return 1
                 fi
@@ -809,7 +832,7 @@ check_container_persistent_journaling() {
                 ;;
             zfs)
                 command -v zfs >/dev/null 2>&1 || return 1
-                checksum="$(zfs get -H -o value checksum "${mount_source}" 2>/dev/null)" || return 1
+                checksum="$(host_exec zfs get -H -o value checksum "${mount_source}" 2>/dev/null)" || return 1
                 test "${checksum}" != "off" || return 1
                 ;;
             *) : ;;
