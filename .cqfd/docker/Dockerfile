@@ -19,7 +19,6 @@ RUN set -x \
         curl \
         default-jre-headless \
         fuse-overlayfs \
-        iperf3 \
         iputils-ping \
         lrzsz \
         libmosquitto-dev \

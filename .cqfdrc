@@ -4,6 +4,7 @@ name='tests'
 
 [build]
 command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh \
+&& shellcheck -xo all tests/*.sh && bash tests/test-launch-conformance-exit-status.sh \
 && pylint src/launch_glee_conformance_tests_serial.py && black --check --diff src/launch_glee_conformance_tests_serial.py \
 && pylint src/launch_gadm_conformance_tests.py && black --check --diff src/launch_gadm_conformance_tests.py \
 && clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h \
@@ -18,7 +19,7 @@ docker_run_args="--network=host -e CONFORMANCE_SCP_ARGS -e CONFORMANCE_SSH_ARGS 
 -e GLEE_TESTS -v geisa-podman-cache:$HOME/.local/share/containers"
 
 [shellcheck]
-command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh'
+command='shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh tests/*.sh'
 
 [pylint]
 command='pylint src/launch_glee_conformance_tests_serial.py src/launch_gadm_conformance_tests.py'

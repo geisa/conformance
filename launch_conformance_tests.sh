@@ -13,14 +13,28 @@ ENDCOLOR="\e[0m"
 ABSOLUTE_PATH="$(readlink -f "$0")"
 TOPDIR="$(dirname "${ABSOLUTE_PATH}")"
 NO_REPORTS=false
-bandwidth_test_exit_code=0
+NO_REBOOT=false
 lee_test_exit_code=0
 adm_test_exit_code=0
 api_test_exit_code=0
 
+source "${TOPDIR}"/src/GEISA-LEE-tests/tests_configuration.conf
+source "${TOPDIR}"/src/GEISA-LEE-tests/user_configuration.conf
+
 source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh
 source "${TOPDIR}"/src/launch_gapi_conformance_tests.sh
 source "${TOPDIR}"/src/launch_gadm_conformance_tests.sh
+
+trap '
+	echo -e "${RED}Error:${ENDCOLOR} Test run interrupted."
+	echo -e "${ORANGE}Warning:${ENDCOLOR} Test artifacts may still be installed on the board."
+	if [[ "${BOARD_USER:-root}" != root ]]; then
+		echo "Clean them up with: ${ABSOLUTE_PATH} --ip ${BOARD_IP:-<board_ip>} --user ${BOARD_USER} --clean-up"
+	else
+		echo "Clean them up with: ${ABSOLUTE_PATH} --ip ${BOARD_IP:-<board_ip>} --clean-up"
+	fi
+	exit 1
+' INT TERM HUP QUIT TSTP
 
 usage()
 {
@@ -38,12 +52,18 @@ or
 Optional options:
   --user <username>   				Specify the username for the target device (default: root)
   --password <password>  			Specify the password for the target device (default: empty)
+  --key-path <path>                Specify the SSH private key path (optional)
+	--clean-up                       Clean selected test artifacts from the board and exit
   --no-reports        				Do not generate test reports (only run tests and display results)
+  --no-reboot        				Do not reset the board, skipping the tests that require a reboot
   --baudrate <baudrate> 			Specify the baudrate for the serial port of the board (default: 115200)
   --no-glee-tests        			Do not run GEISA Linux Execution Environment Conformance tests
   --no-gadm-tests        			Do not run GEISA Application & Device Management Conformance tests
   --no-gapi-tests        			Do not run GEISA Application Programming Interface Conformance tests
   --help              				Show this help message
+
+Applications under test, the LXC path and the container layout are configured in
+src/GEISA-LEE-tests/user_configuration.conf.
 
 GADM test options (optional):
   --host-ip <host_ip>				IP address of the host running the EMS server.
@@ -96,8 +116,24 @@ while [[ "$#" -gt 0 ]]; do
 		fi
 		shift 2
 		;;
+		--key-path)
+		SSH_KEY_PATH="$2"
+		if [[ -z "${SSH_KEY_PATH}" ]]; then
+			echo -e "${RED}Error:${ENDCOLOR} SSH key path cannot be empty"
+			usage
+		fi
+		shift 2
+		;;
+		--clean-up)
+		CLEAN_UP=true
+		shift
+		;;
 		--no-reports)
 		NO_REPORTS=true
+		shift
+		;;
+		--no-reboot)
+		NO_REBOOT=true
 		shift
 		;;
 		--baudrate)
@@ -166,6 +202,43 @@ while [[ "$#" -gt 0 ]]; do
 	esac
 done
 
+if [[ -n "${SSH_KEY_PATH:-}" ]]; then
+	if [[ ! -f "${SSH_KEY_PATH}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} SSH key not found: ${SSH_KEY_PATH}"
+		exit 1
+	fi
+	CONFORMANCE_SSH_ARGS="${CONFORMANCE_SSH_ARGS:-} -i ${SSH_KEY_PATH}"
+	CONFORMANCE_SCP_ARGS="${CONFORMANCE_SCP_ARGS:-} -i ${SSH_KEY_PATH}"
+fi
+
+BOARD_USER=${BOARD_USER:-root}
+
+if [[ -n "${CLEAN_UP:-}" ]]; then
+	if [[ -z "${BOARD_IP:-}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} --clean-up requires --ip"
+		exit 1
+	fi
+	if [[ -n ${NO_GLEE_TESTS} && -n ${NO_GADM_TESTS} && -n ${NO_GAPI_TESTS} ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} At least one test suite must be selected for cleanup"
+		exit 1
+	fi
+	cleanup_status=0
+	if [[ -z ${NO_GLEE_TESTS} ]]; then
+		( cleanup_glee_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=1
+	fi
+	if [[ -z ${NO_GAPI_TESTS} ]]; then
+		( cleanup_api_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=1
+	fi
+	if [[ -z ${NO_GADM_TESTS} ]]; then
+		( cleanup_gadm_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "" "" \
+			"${ADM_CLIENT_PATH:-/usr/bin/adm_client}" ) || cleanup_status=1
+	fi
+	exit "${cleanup_status}"
+fi
+
 if [[ -n ${NO_GLEE_TESTS} && -n ${NO_GADM_TESTS} && -n ${NO_GAPI_TESTS} ]]; then
 	echo -e "${RED}Error:${ENDCOLOR} At least one test suite must be executed. Please remove one of the --no-*-tests options."
 	usage
@@ -185,21 +258,22 @@ if ! ${NO_REPORTS}; then
 	rm -rf "${TOPDIR}"/reports/*
 fi
 
-BOARD_USER=${BOARD_USER:-root}
-
 if [[ -z ${NO_GLEE_TESTS} ]]; then
 	if [[ -n ${BOARD_IP} ]]; then
 		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		provision_glee_apps_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		if ! ${NO_REPORTS}; then
 			launch_glee_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
-			launch_bandwidth_test_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		else
-			launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
-			launch_bandwidth_test_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+			launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		fi
-		cleanup_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}"
+		cleanup_glee_ssh \
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" || lee_test_exit_code=1
 	else
 		echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
+		if [[ -n ${APPLICATIONS} ]]; then
+			echo -e "${ORANGE}Warning:${ENDCOLOR} Applications cannot be provisioned over serial"
+		fi
 		args=(--serial "${BOARD_SERIAL}" \
 			--user "${BOARD_USER}" \
 			--password "${BOARD_PASSWORD:-}" \
@@ -273,4 +347,9 @@ if ! ${NO_REPORTS}; then
 	cd "${TOPDIR}" || exit 1
 fi
 
-exit $(("${lee_test_exit_code}" || "${bandwidth_test_exit_code}" || "${adm_test_exit_code}" || "${api_test_exit_code}"))
+if [[ "${lee_test_exit_code}" != 0 ||
+	"${adm_test_exit_code}" != 0 ||
+	"${api_test_exit_code}" != 0 ]]; then
+	exit 1
+fi
+exit 0

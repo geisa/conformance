@@ -21,14 +21,11 @@ The automatic test launcher requires the following requirements:
   * With ssh:
      - Board with a connexion to the network
      - SSH access to the board
-     - iperf3 for the bandwidth test
   * With serial:
      - Serial connection to the board
      - lrzsz package
 * On the host:
-  * With ssh:
-     - sshpass (On ubuntu, install with `sudo apt install sshpass`)
-     - iperf3 for the bandwidth test (On ubuntu, install with `sudo apt install iperf3`)
+  * With ssh: OpenSSH client uses the default SSH key first. sshpass is required when no usable key is found and password authentication is needed (On Ubuntu, install with `sudo apt install sshpass`)
   * With serial:
      - python3 (On ubuntu, install with `sudo apt install python3`)
      - pyserial (On ubuntu, install with `sudo apt install python3-serial`)
@@ -73,13 +70,34 @@ results.
 Optional options:
 
 * `--user <username>`: The username for the target device (default: root)
-* `--password <password>`: The password for the target device (default: empty)
+* `--password <password>`: Password fallback used only when SSH key authentication fails
+* `--key-path <path>`: Optional SSH private key path. Without it, standard OpenSSH key locations and agents are used
 * `--no-reports` : Do not generate test reports (only run tests and display results)
+* `--no-reboot`: Do not reset the board, skipping the tests that require a reboot
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
 * `--no-glee-tests`: Do not run GEISA Linux Execution Environment Conformance tests
 * `--no-gadm-tests`: Do not run GEISA Application & Device Management Conformance tests
 * `--no-gapi-tests`: Do not run GEISA Application Programming Interface Conformance tests
+* `--clean-up`: Clean artifacts for the selected test suites and exit. Use the `--no-<glee|gadm|gapi>-tests` options to exclude corresponding suites
 * `--help`: display help message
+
+The LEE tests are configured in `src/GEISA-LEE-tests/user_configuration.conf`,
+which is read by both the host launcher and the target. Edit it before launching
+a run to select the applications under test and describe the container layout of
+the implementation under test. `APPLICATION_MANIFEST_PATH` must be an
+absolute target-side Deployment Manifest path. It initially points to the
+reference application's manifest transferred by the SSH launcher. Change it
+when testing another application layout. It is independent of `LXC_PATH`.
+Each container resource setting is a separate absolute target-side path. The
+defaults locate the reference application's resources under `LXC_PATH`.
+Override the settings individually when testing another layout.
+The `geisa-simple` reference application is pinned in the
+`src/GEISA-LEE-tests/src/community` submodule.
+
+The SSH launcher transfers only the Cukinia runner and the LEE test runtime
+files. Reference application sources remain on the host. When reference
+provisioning is selected, only the built application image and its complete
+manifest are transferred to the board.
 
 GADM test options (optional):
 * `--host-ip <host_ip>`: IP address of the host running the EMS server
@@ -93,11 +111,20 @@ GADM test options (optional):
 * `--server-url <url>`: EMS server URL (default: http://localhost:8080)
 
 Environment variables can also be used to configure the script:
-* `CONFORMACE_SCP_ARGS`: Additional arguments for the `scp` command
-* `CONFORMACE_SSH_ARGS`: Additional arguments for the `ssh` command
+* `CONFORMANCE_SCP_ARGS`: Additional arguments for the `scp` command
+* `CONFORMANCE_SSH_ARGS`: Additional arguments for the `ssh` command
 * `GLEE_TESTS`: Specify the list of GEISA LEE tests name to run (default: all tests)
+
+SSH and SCP first use normal OpenSSH key authentication, including configured
+identities and agents. If key authentication fails and `--password` was given,
+the launcher retries with `sshpass`.
+
 The tests names correspond to a part of the filename.
-Example: `GLEE_TESTS="os_requirements_tests application_isolation"` will run only the `os_requirements_tests` and `application_isolation` tests.
+Example: `GLEE_TESTS="operating_system app_isolation"` will run only the `operating_system` and `app_isolation` tests.
+
+Some conformance tests only make sense once the device has been reset. Each
+pillar groups them in its own `reboot.conf` suite (if there is any), which the launcher keeps off the board until it has actually reset it. The other suites therefore run and
+report first.
 
 A xml and pdf report will be generated in the `reports` directory.
 
@@ -115,8 +142,6 @@ or
 $ cqfd run ./launch_conformance_tests.sh --serial <serial_port> [options]
 ```
 
-Launching the tests with the ip option, will run the bandwidth test.
-
 ### Launch tests manually
 
 #### Requirements
@@ -130,7 +155,6 @@ A docker support is also available to generate the report on the host, it requir
 * cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
 
 For the tests to run, you need to have the following requirements on the target:
-- iperf3 for the bandwidth test (iperf3 should also be installed on the host)
 
 #### Launch tests
 
@@ -148,23 +172,9 @@ If you only want to run the tests without generating the report, you can run the
 $ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf
 ```
 
-A special case is done for the bandwidth test, as it requires a server to run the test. You can run the following command to launch the tests and generate the report:
-```bash
-$ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-lee-conformance-report-bandwidth.xml /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf
-```
-or without the report generation:
-```bash
-$ /tmp/conformance_tests/cukinia/cukinia /tmp/conformance_tests/GEISA-LEE-tests/connectivity_tests_bandwidth.conf
-```
-
-Then on your host you can run the iperf3 client:
-```bash
-$ iperf3 -c <board_ip>
-```
-
 #### Generate report
 
-To generate the PDF report, transfer the xml report (and the bandwidth report if generated) on your host in test-report-pdf folder (/path/to/conformance/src/test-report-pdf) and generate it with the following commands:
+To generate the PDF report, transfer the XML report to the test-report-pdf folder (/path/to/conformance/src/test-report-pdf) on your host, then generate it with the following commands:
 
 ```bash
 cd /path/to/conformance/src/test-report-pdf
@@ -186,11 +196,10 @@ This will generate a PDF report in the test-report-pdf directory named `test-rep
 
 ## Configuration file
 
-A configuration file is provided to set some test checks as the specification are not yet finalized.
-The configuration file is located in `src/GEISA-LEE-tests/tests_configuration.conf`.
-
-Here are the available configuration options:
-* CONFIGURATION_FILE: Used to test the proper functioning of the configuration file.
+A user configuration file is provided for the test environment and reference
+application provisioner. It is located in
+`src/GEISA-LEE-tests/user_configuration.conf`.
+All supported parameters and their defaults are declared in that file.
 
 ## Installation
 
@@ -198,7 +207,7 @@ Download the repository and run the following command to download the
 dependencies:
 
 ```bash
-$ git submodule update --init --recursive
+$ git submodule update --init
 ```
 
 ## Testing

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Southern California Edison
+
 [submodule "src/cukinia"]
 	path = src/cukinia
 	url = https://github.com/savoirfairelinux/cukinia.git
@@ -10,3 +12,6 @@
 [submodule "src/GEISA-API-tests/src/nanopb"]
 	path = src/GEISA-API-tests/src/nanopb
 	url = https://github.com/nanopb/nanopb.git
+[submodule "src/GEISA-LEE-tests/src/community"]
+	path = src/GEISA-LEE-tests/src/community
+	url = https://github.com/geisa/community.git
