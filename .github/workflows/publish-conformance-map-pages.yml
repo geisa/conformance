@@ -177,9 +177,7 @@ jobs:
           <li><a href="latest/lee.html">LEE review report</a></li>
           <li><a href="latest/api.html">API review report</a></li>
           </ul>
-          <p>These are generated requirement-candidate review reports. They are not
-          approved requirements, approved requirement-to-test mappings, or conformance
-          coverage results.</p>
+<p>Auto-generated review reports for requirement candidates extracted from the GEISA Specification. Intended for internal use only at this time.</p>
           </main></body>
           </html>
           """,
