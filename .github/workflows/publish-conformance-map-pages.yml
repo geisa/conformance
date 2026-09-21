@@ -1,0 +1,203 @@
+# Copyright 2026, Contributors to the Grid Edge Interoperability &
+# Security Alliance (GEISA), a Series of LF Projects, LLC
+#
+# Licensed under the Apache License, Version 2.0. See LICENSE.
+
+name: Publish Conformance Map Review
+
+on:
+  schedule:
+    - cron: "17 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-conformance-map
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    name: Generate and publish conformance-map review reports
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out conformance
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check out latest specification
+        uses: actions/checkout@v4
+        with:
+          repository: geisa/specification
+          ref: main
+          path: specification-latest
+          persist-credentials: false
+
+      - name: Check out GEISA 0.9.0 specification
+        uses: actions/checkout@v4
+        with:
+          repository: geisa/specification
+          ref: v0.9.0
+          path: specification-0.9.0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install conformance-map
+        run: python -m pip install -e tools/conformance-map
+
+      - name: Resolve specification revisions
+        run: |
+          set -euo pipefail
+          {
+            echo "LATEST_SPECIFICATION_SHA=$(git -C specification-latest rev-parse HEAD)"
+            echo "RELEASE_SPECIFICATION_SHA=$(git -C specification-0.9.0 rev-parse HEAD)"
+            echo "GENERATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate candidate YAML and review reports
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/conformance-map-candidates/latest"
+          mkdir -p "$RUNNER_TEMP/conformance-map-candidates/0.9.0"
+          mkdir -p pages/latest pages/0.9.0
+
+          geisa-conformance-map extract-rst \
+            --source specification-latest \
+            --pillar LEE \
+            --output "$RUNNER_TEMP/conformance-map-candidates/latest/lee.yaml"
+          geisa-conformance-map extract-rst \
+            --source specification-latest \
+            --pillar API \
+            --output "$RUNNER_TEMP/conformance-map-candidates/latest/api.yaml"
+          geisa-conformance-map extract-rst \
+            --source specification-0.9.0 \
+            --pillar LEE \
+            --output "$RUNNER_TEMP/conformance-map-candidates/0.9.0/lee.yaml"
+          geisa-conformance-map extract-rst \
+            --source specification-0.9.0 \
+            --pillar API \
+            --output "$RUNNER_TEMP/conformance-map-candidates/0.9.0/api.yaml"
+
+          python tools/conformance-map/scripts/generate-review-report.py \
+            "$RUNNER_TEMP/conformance-map-candidates/latest/lee.yaml" \
+            pages/latest/lee.html
+          python tools/conformance-map/scripts/generate-review-report.py \
+            "$RUNNER_TEMP/conformance-map-candidates/latest/api.yaml" \
+            pages/latest/api.html
+          python tools/conformance-map/scripts/generate-review-report.py \
+            "$RUNNER_TEMP/conformance-map-candidates/0.9.0/lee.yaml" \
+            pages/0.9.0/lee.html
+          python tools/conformance-map/scripts/generate-review-report.py \
+            "$RUNNER_TEMP/conformance-map-candidates/0.9.0/api.yaml" \
+            pages/0.9.0/api.html
+
+      - name: Verify generated reports
+        run: |
+          set -euo pipefail
+          python - \
+            "$RUNNER_TEMP/conformance-map-candidates/latest" \
+            "$LATEST_SPECIFICATION_SHA" \
+            "$RUNNER_TEMP/conformance-map-candidates/0.9.0" \
+            "$RELEASE_SPECIFICATION_SHA" <<'PY'
+          from pathlib import Path
+          import sys
+
+          import yaml
+
+          for directory, expected_commit in zip(sys.argv[1::2], sys.argv[2::2]):
+              for pillar in ("lee", "api"):
+                  path = Path(directory) / f"{pillar}.yaml"
+                  data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                  actual_commit = data.get("source", {}).get("commit")
+                  if actual_commit != expected_commit:
+                      raise SystemExit(
+                          f"{path}: source commit {actual_commit!r} "
+                          f"does not match {expected_commit!r}"
+                      )
+          PY
+
+          for report in \
+            pages/latest/lee.html \
+            pages/latest/api.html \
+            pages/0.9.0/lee.html \
+            pages/0.9.0/api.html; do
+            test -s "$report"
+          done
+
+      - name: Generate review index
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from html import escape
+          from os import environ
+          from pathlib import Path
+
+          generated_at = escape(environ["GENERATED_AT"])
+          latest_sha = escape(environ["LATEST_SPECIFICATION_SHA"])
+          release_sha = escape(environ["RELEASE_SPECIFICATION_SHA"])
+          Path("pages/index.html").write_text(
+              f"""<!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>GEISA Conformance Map Review</title>
+          <style>
+          body {{ font-family: system-ui, sans-serif; line-height: 1.5; margin: 0; }}
+          main {{ max-width: 48rem; margin: 0 auto; padding: 2rem 1rem; }}
+          code {{ overflow-wrap: anywhere; }}
+          </style>
+          </head>
+          <body><main>
+          <h1>GEISA Conformance Map Review</h1>
+          <p>Generated at <time>{generated_at}</time> UTC</p>
+          <h2>GEISA v0.9.0</h2>
+          <p>Ref <code>v0.9.0</code><br>Commit <code>{release_sha}</code></p>
+          <ul>
+          <li><a href="0.9.0/lee.html">LEE review report</a></li>
+          <li><a href="0.9.0/api.html">API review report</a></li>
+          </ul>
+          <h2>Latest specification</h2>
+          <p>Ref <code>main</code><br>Commit <code>{latest_sha}</code></p>
+          <ul>
+          <li><a href="latest/lee.html">LEE review report</a></li>
+          <li><a href="latest/api.html">API review report</a></li>
+          </ul>
+          <p>These are generated requirement-candidate review reports. They are not
+          approved requirements, approved requirement-to-test mappings, or conformance
+          coverage results.</p>
+          </main></body>
+          </html>
+          """,
+              encoding="utf-8",
+          )
+          PY
+          touch pages/.nojekyll
+          test -s pages/index.html
+          test -f pages/.nojekyll
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
