@@ -177,7 +177,7 @@ jobs:
           <li><a href="latest/lee.html">LEE review report</a></li>
           <li><a href="latest/api.html">API review report</a></li>
           </ul>
-<p>Auto-generated review reports for requirement candidates extracted from the GEISA Specification. Intended for internal use only at this time.</p>
+          <p>Auto-generated review reports for requirement candidates extracted from the GEISA Specification. Intended for internal use only at this time.</p>
           </main></body>
           </html>
           """,
