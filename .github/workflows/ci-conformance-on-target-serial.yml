@@ -77,6 +77,9 @@ jobs:
                   fail-on-error: false
             - name: Run on target tests without report generation using serial
               run: |
+                output_file="$(mktemp)"
+                set +e
+
                 cqfd init
                 CQFD_EXTRA_RUN_ARGS="-v ${{inputs.target_tty}}:${{inputs.target_tty}}" \
                 cqfd run ./launch_conformance_tests.sh \
@@ -84,9 +87,22 @@ jobs:
                     --baudrate ${{inputs.target_baudrate}} \
                     --user ${{inputs.user}} \
                     ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
-                    --no-reports
+                    --no-reports >"${output_file}" 2>&1
+                test_status=$?
+
+                set -e
+                cat "${output_file}"
+                if [[ ${test_status} -ne 0 ]] && ! grep -Fq '[FAIL]' "${output_file}"; then
+                    rm -f "${output_file}"
+                    echo "Conformance test execution failed"
+                    exit "${test_status}"
+                fi
+                rm -f "${output_file}"
             - name: Test selecting GLEE tests to run
               run: |
+                output_file="$(mktemp)"
+                set +e
+
                 cqfd init
                 CQFD_EXTRA_RUN_ARGS="-v ${{inputs.target_tty}}:${{inputs.target_tty}}" \
                 GLEE_TESTS="basic_hardware_tests os_requirements_tests" \
@@ -95,4 +111,14 @@ jobs:
                     --baudrate ${{inputs.target_baudrate}} \
                     --user ${{inputs.user}} \
                     ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }} \
-                    --no-reports
+                    --no-reports >"${output_file}" 2>&1
+                test_status=$?
+
+                set -e
+                cat "${output_file}"
+                if [[ ${test_status} -ne 0 ]] && ! grep -Fq '[FAIL]' "${output_file}"; then
+                    rm -f "${output_file}"
+                    echo "Conformance test execution failed"
+                    exit "${test_status}"
+                fi
+                rm -f "${output_file}"
