@@ -39,11 +39,20 @@ jobs:
               run: cp launch_gapi_test_app.sh.template launch_gapi_test_app.sh
             - name: Run on target tests with report generation using ssh
               run: |
+                set +e
                 cqfd init
                 cqfd run ./launch_conformance_tests.sh \
                     --ip ${{secrets.target_ip}} \
                     --user ${{ inputs.user }} \
                     ${{ secrets.target_password && format('--password "{0}"', secrets.target_password) }}
+
+                if [[ $? -ne 0 ]]; then
+                    grep -q "FAIL" reports/*.xml
+                    if [[ $? -ne 0 ]]; then
+                        echo "Conformance test execution failed"
+                        exit 1
+                    fi
+                fi
             - name: Upload results
               if: always()
               uses: actions/upload-artifact@v7
@@ -58,6 +67,7 @@ jobs:
                 name: SSH Tests
                 path: reports/*.xml
                 reporter: jest-junit
+                fail-on-error: false
             - name: Run on target tests without report generation using ssh
               run: |
                 cqfd init
