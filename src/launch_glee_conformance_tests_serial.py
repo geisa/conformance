@@ -20,12 +20,30 @@ import serial
 TOPDIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
-def compress_dir(src_dir, archive_name):
+def tar_exclude(excludes):
+    """
+    Create a filter function for tarfile to exclude specified files/directories.
+    """
+    if excludes is None:
+        excludes = []
+
+    def filter_function(tarinfo):
+        for exclude in excludes:
+            if tarinfo.name == f"{exclude}":
+                return None
+        return tarinfo
+
+    return filter_function
+
+
+def compress_dir(src_dir, archive_name, tar_excludes=None):
     """
     Compress a directory into a tar.gz archive.
     """
     with tarfile.open(f"{TOPDIR}/{archive_name}", "w:gz") as tar:
-        tar.add(src_dir, arcname=os.path.basename(src_dir))
+        tar.add(
+            src_dir, arcname=os.path.basename(src_dir), filter=tar_exclude(tar_excludes)
+        )
 
 
 def send_file_via_zmodem(archive_name, args):
@@ -252,7 +270,11 @@ def main():
     args = parse_arguments()
 
     compress_dir(f"{TOPDIR}/src/cukinia", "cukinia.tar.gz")
-    compress_dir(f"{TOPDIR}/src/GEISA-LEE-tests", "GEISA-LEE-tests.tar.gz")
+    compress_dir(
+        f"{TOPDIR}/src/GEISA-LEE-tests",
+        "GEISA-LEE-tests.tar.gz",
+        ["GEISA-LEE-tests/src/community"],
+    )
 
     try:
         with serial.Serial(args.serial, args.baudrate, timeout=1) as ser:
