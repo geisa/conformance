@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 LXC_PATH = Path(os.environ.get("LXC_PATH", "/platform/conformance/lxc"))
-REFERENCE_APPLICATION = os.environ.get("REFERENCE_APPLICATION", "geisa-simple")
+REFERENCE_APPLICATION = os.environ.get("REFERENCE_APPLICATION")
 MANIFEST_PATH = os.environ.get("APPLICATION_MANIFEST_PATH")
 STORAGE_FIELDS = ("persistent", "nonpersistent")
 

@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 
 from pathlib import Path
 
@@ -410,7 +411,11 @@ def mount_application(metadata: dict) -> None:
     if not mounted(item["base"]):
         run("mount", "-t", IMAGE_FSTYPE, "-o", "loop,ro", metadata["base_image"], str(item["base"]))
     if not mounted(item["application"]):
-        run("mount", "-t", IMAGE_FSTYPE, "-o", "loop,ro", str(item["image"]), str(item["application"]))
+        # The appoverlay package is unpacked into its own read-only layer.
+        run("mount", "-t", "tmpfs", "-o", "mode=0755", "tmpfs", str(item["application"]))
+        with tarfile.open(item["image"], "r:gz") as package:
+            package.extractall(item["application"], filter="data")
+        run("mount", "-o", "remount,ro", str(item["application"]))
     if not mounted(item["rootfs"]):
         (item["upper"] / NONPERSISTENT_MOUNT).mkdir(parents=True, exist_ok=True)
         (item["upper"] / PERSISTENT_MOUNT).mkdir(parents=True, exist_ok=True)
@@ -638,15 +643,15 @@ def uninstall(name: str) -> None:
 
 
 def install(image: Path, manifest_path: Path, application_name: str | None = None) -> None:
-    """Provision an application image, manifest, runtime configuration, and storage.
+    """Provision an application package, manifest, runtime configuration, and storage.
 
     Args:
-        image: Application filesystem image to install.
+        image: Application appoverlay package (.tgz) to install.
         manifest_path: Manifest JSON file that defines the application.
         application_name: Optional installed name that overrides the manifest name.
     """
     if not image.is_file() or not manifest_path.is_file():
-        raise ValueError("application image or manifest is missing")
+        raise ValueError("application package or manifest is missing")
     metadata = read_manifest(manifest_path, application_name)
     metadata["base_image"] = str(find_base_image())
     root = app_directory(metadata["name"])
@@ -671,7 +676,7 @@ def install(image: Path, manifest_path: Path, application_name: str | None = Non
     write_lxc_config(metadata, root)
     try:
         mount_application(metadata)
-    except (OSError, RuntimeError, subprocess.CalledProcessError):
+    except (OSError, RuntimeError, subprocess.CalledProcessError, tarfile.TarError):
         try:
             unmount_application(metadata)
         finally:
@@ -732,7 +737,9 @@ def main() -> int:
             deactivate(arguments.name)
         elif arguments.operation == "uninstall":
             uninstall(arguments.name)
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+    except (
+        OSError, ValueError, RuntimeError, subprocess.CalledProcessError, tarfile.TarError
+    ) as error:
         print(f"manage_package: {error}", file=sys.stderr)
         return 1
     return 0

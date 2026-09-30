@@ -94,12 +94,13 @@ defaults locate the reference application's resources under `LXC_PATH`.
 Override the settings individually when testing another layout.
 The reference application sources are pinned in the
 `src/GEISA-LEE-tests/src/community` submodule. `REFERENCE_APPLICATION`
-selects one, which is built and installed with the manifest kept in its
-folder.
+selects one. Its own `scripts/package.py` packages it as an appoverlay `.tgz`
+with the manifest kept in its folder, and it is installed under the name that
+manifest gives.
 
 The SSH launcher transfers only the Cukinia runner and the LEE test runtime
 files. Reference application sources remain on the host. When reference
-provisioning is selected, only the built application image and its complete
+provisioning is selected, only the application package and its complete
 manifest are transferred to the board.
 
 GADM test options (optional):

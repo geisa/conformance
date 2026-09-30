@@ -10,11 +10,15 @@ RED="\e[31m"
 ENDCOLOR="\e[0m"
 declare CONFORMANCE_SSH_ARGS
 declare CONFORMANCE_SCP_ARGS
-APPLICATIONS="${APPLICATIONS:-}"
 GLEE_TESTS="${GLEE_TESTS:-}"
 REFERENCE_APPLICATION="${REFERENCE_APPLICATION:-}"
 NO_REBOOT="${NO_REBOOT:-false}"
 REBOOT_PERSISTENCE_MARKER="${REBOOT_PERSISTENCE_MARKER:-}"
+
+# The reference application is installed under the name its manifest gives.
+REFERENCE_APPLICATION_DIR="${TOPDIR:-}/src/GEISA-LEE-tests/src/community/applications/${REFERENCE_APPLICATION}"
+REFERENCE_APPLICATION_NAME="$(manifest_application_name "${REFERENCE_APPLICATION_DIR}/${REFERENCE_APPLICATION}-manifest.json")"
+APPLICATIONS="${APPLICATIONS:-${REFERENCE_APPLICATION_NAME}}"
 
 SSH() {
 	local status
@@ -64,7 +68,7 @@ provision_reference_application() {
 		return 1
 	fi
 
-	source_dir="${topdir}/src/GEISA-LEE-tests/src/community/applications/${app_name}"
+	source_dir="${REFERENCE_APPLICATION_DIR}"
 	if [[ ! -d "${source_dir}" ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Reference application source not found: ${source_dir}"
 		return 1
@@ -176,7 +180,7 @@ provision_glee_apps_with_ssh() {
 	SSH "mkdir -p /tmp/conformance_tests/glee-apps"
 
 	for app_name in ${APPLICATIONS}; do
-		if [[ "${app_name}" == "${REFERENCE_APPLICATION}" ]]; then
+		if [[ "${app_name}" == "${REFERENCE_APPLICATION_NAME}" ]]; then
 			provision_reference_application "${board_ip}" "${board_user}" "${board_password}" "${topdir}" "${target_arch}" "${app_name}" || exit 1
 		fi
 	done
@@ -383,7 +387,7 @@ cleanup_glee_ssh() {
 	local board_password="$3"
 	local topdir="$4"
 	local app_name cleanup_input app_dir status=0
-	app_dir="${LXC_PATH}/${REFERENCE_APPLICATION}"
+	app_dir="${LXC_PATH}/${REFERENCE_APPLICATION_NAME}"
 
 	# The cleanup scripts load the local test configuration, since the board
 	# copy may be gone.
@@ -401,7 +405,7 @@ cleanup_glee_ssh() {
 		for resolver in layout_base_layer_path layout_application_layer_path \
 			layout_configuration_layer_path layout_upper_path layout_work_path \
 			layout_rootfs_path layout_application_image_path layout_persistent_image_path; do
-			path="$("${resolver}" "${REFERENCE_APPLICATION}")"
+			path="$("${resolver}" "${REFERENCE_APPLICATION_NAME}")"
 			label="${resolver#layout_}"
 			label="${label//_/ }"
 			printf '  %s: %s\n' "${label^}" "${path}"
@@ -414,12 +418,12 @@ cleanup_glee_ssh() {
 	print_cleanup_paths
 	if ! wait_for_board_up "${board_ip}"; then
 		echo "Warning: Board at ${board_ip} is not reachable. Cleanup failed." >&2
-		echo "Manual cleanup required: de-provision '${REFERENCE_APPLICATION}' and unmount its filesystems, then remove '${app_dir}' and '/tmp/conformance_tests' on the board." >&2
+		echo "Manual cleanup required: de-provision '${REFERENCE_APPLICATION_NAME}' and unmount its filesystems, then remove '${app_dir}' and '/tmp/conformance_tests' on the board." >&2
 		print_cleanup_paths >&2
 		return 1
 	fi
 	for app_name in ${APPLICATIONS}; do
-		if [[ "${app_name}" == "${REFERENCE_APPLICATION}" ]]; then
+		if [[ "${app_name}" == "${REFERENCE_APPLICATION_NAME}" ]]; then
 			cleanup_input="$({
 				print_cleanup_configuration
 				echo "export_application_layout '${app_name}'"
@@ -437,7 +441,7 @@ cleanup_glee_ssh() {
 	SSH "sh -s" <<< "${cleanup_input}" || status=1
 	if [[ ${status} -ne 0 ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up LEE test artifacts on board"
-		echo "Manual cleanup required: de-provision '${REFERENCE_APPLICATION}' and unmount its filesystems, then remove '${app_dir}' and '/tmp/conformance_tests' on the board."
+		echo "Manual cleanup required: de-provision '${REFERENCE_APPLICATION_NAME}' and unmount its filesystems, then remove '${app_dir}' and '/tmp/conformance_tests' on the board."
 		print_cleanup_paths
 		return 1
 	fi

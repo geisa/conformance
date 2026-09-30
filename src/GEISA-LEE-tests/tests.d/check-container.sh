@@ -14,6 +14,10 @@ REFERENCE_LXC_CPU_WEIGHT="${REFERENCE_LXC_CPU_WEIGHT:-}"
 REBOOT_PERSISTENCE_MARKER="${REBOOT_PERSISTENCE_MARKER:-}"
 PRIVILEGED_COMMAND="${PRIVILEGED_COMMAND:-}"
 
+# The reference application is installed under the name its manifest gives.
+REFERENCE_APPLICATION_NAME="$(manifest_application_name "${APPLICATION_MANIFEST_PATH}" 2>/dev/null)"
+APPLICATIONS="${APPLICATIONS:-${REFERENCE_APPLICATION_NAME}}"
+
 # Mount points and journaling filesystem expectations are mandated by the GEISA
 # specification and are not configurable.
 CONTAINER_PERSISTENT_MOUNT="/home/geisa"
@@ -275,7 +279,7 @@ manage_package() {
     local app="$1"
     shift
     (
-        export APPLICATIONS LXC_PATH REFERENCE_APPLICATION
+        export APPLICATIONS LXC_PATH
         export CONTAINER_BASE_IMAGE CONTAINER_BASE_IMAGE_DIR CONTAINER_BASE_IMAGE_GLOB
         export CONTAINER_IMAGE_FSTYPE CONTAINER_PERSISTENT_FSTYPE
         export LXC_NETWORK_BRIDGE LXC_NETWORK_GATEWAY LXC_NETWORK_PREFIX
