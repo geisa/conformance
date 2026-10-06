@@ -52,7 +52,8 @@ or
 Optional options:
   --user <username>   				Specify the username for the target device (default: root)
   --password <password>  			Specify the password for the target device (default: empty)
-  --key-path <path>                Specify the SSH private key path (optional)
+  --key-name <name>                Specify the SSH private key file name to use (optional, default: ssh default keys)
+  --key-path <dir>                 Specify the directory holding the SSH key (default: ~/.ssh, requires --key-name)
 	--clean-up                       Clean selected test artifacts from the board and exit
   --no-reports        				Do not generate test reports (only run tests and display results)
   --no-reboot        				Do not reset the board, skipping the tests that require a reboot
@@ -112,6 +113,14 @@ while [[ "$#" -gt 0 ]]; do
 		BOARD_PASSWORD="$2"
 		if [[ -z "${BOARD_PASSWORD}" ]]; then
 			echo -e "${RED}Error:${ENDCOLOR} Password cannot be empty"
+			usage
+		fi
+		shift 2
+		;;
+		--key-name)
+		SSH_KEY_NAME="$2"
+		if [[ -z "${SSH_KEY_NAME}" ]]; then
+			echo -e "${RED}Error:${ENDCOLOR} SSH key name cannot be empty"
 			usage
 		fi
 		shift 2
@@ -202,13 +211,19 @@ while [[ "$#" -gt 0 ]]; do
 	esac
 done
 
-if [[ -n "${SSH_KEY_PATH:-}" ]]; then
-	if [[ ! -f "${SSH_KEY_PATH}" ]]; then
-		echo -e "${RED}Error:${ENDCOLOR} SSH key not found: ${SSH_KEY_PATH}"
+if [[ -n "${SSH_KEY_PATH:-}" && -z "${SSH_KEY_NAME:-}" ]]; then
+	echo -e "${RED}Error:${ENDCOLOR} --key-path requires --key-name"
+	exit 1
+fi
+
+if [[ -n "${SSH_KEY_NAME:-}" ]]; then
+	ssh_key="${SSH_KEY_PATH:-${HOME}/.ssh}/${SSH_KEY_NAME}"
+	if [[ ! -f "${ssh_key}" ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} SSH key not found: ${ssh_key}"
 		exit 1
 	fi
-	CONFORMANCE_SSH_ARGS="${CONFORMANCE_SSH_ARGS:-} -i ${SSH_KEY_PATH}"
-	CONFORMANCE_SCP_ARGS="${CONFORMANCE_SCP_ARGS:-} -i ${SSH_KEY_PATH}"
+	CONFORMANCE_SSH_ARGS="${CONFORMANCE_SSH_ARGS:-} -i ${ssh_key}"
+	CONFORMANCE_SCP_ARGS="${CONFORMANCE_SCP_ARGS:-} -i ${ssh_key}"
 fi
 
 BOARD_USER=${BOARD_USER:-root}

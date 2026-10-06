@@ -71,7 +71,8 @@ Optional options:
 
 * `--user <username>`: The username for the target device (default: root)
 * `--password <password>`: Password fallback used only when SSH key authentication fails
-* `--key-path <path>`: Optional SSH private key path. Without it, standard OpenSSH key locations and agents are used
+* `--key-name <name>`: Optional SSH private key file name. Without it, standard OpenSSH key locations and agents are used
+* `--key-path <dir>`: Directory holding the key given by `--key-name` (default: `~/.ssh`)
 * `--no-reports` : Do not generate test reports (only run tests and display results)
 * `--no-reboot`: Do not reset the board, skipping the tests that require a reboot
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
@@ -91,8 +92,10 @@ when testing another application layout. It is independent of `LXC_PATH`.
 Each container resource setting is a separate absolute target-side path. The
 defaults locate the reference application's resources under `LXC_PATH`.
 Override the settings individually when testing another layout.
-The `geisa-simple` reference application is pinned in the
-`src/GEISA-LEE-tests/src/community` submodule.
+The reference application sources are pinned in the
+`src/GEISA-LEE-tests/src/community` submodule. `REFERENCE_APPLICATION`
+selects one, which is built and installed with the manifest kept in its
+folder.
 
 The SSH launcher transfers only the Cukinia runner and the LEE test runtime
 files. Reference application sources remain on the host. When reference
