@@ -289,7 +289,7 @@ prepare_glee_reboot_with_ssh() {
 	marker_hex=$(od -An -N16 -tx1 /dev/urandom) || return 1
 	marker=".geisa-${marker_hex// /}"
 	echo ""
-	echo "Seeding persistent storage before board reset"
+	echo "Preparing board for LEE reboot tests with marker: ${marker}"
 	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
 		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
 		LEE_TESTS_DIR=/tmp/conformance_tests/GEISA-LEE-tests; \
@@ -385,6 +385,15 @@ cleanup_glee_ssh() {
 	local app_name cleanup_input app_dir status=0
 	app_dir="${LXC_PATH}/${REFERENCE_APPLICATION}"
 
+	# The cleanup scripts load the local test configuration, since the board
+	# copy may be gone.
+	print_cleanup_configuration() {
+		echo "set -a"
+		cat "${topdir}/src/GEISA-LEE-tests/tests_configuration.conf"
+		cat "${topdir}/src/GEISA-LEE-tests/user_configuration.conf"
+		echo "set +a"
+	}
+
 	print_cleanup_paths() {
 		local resolver label path
 		printf '  Application directory: %s\n' "${app_dir}"
@@ -412,10 +421,7 @@ cleanup_glee_ssh() {
 	for app_name in ${APPLICATIONS}; do
 		if [[ "${app_name}" == "${REFERENCE_APPLICATION}" ]]; then
 			cleanup_input="$({
-				echo "set -a"
-				cat "${topdir}/src/GEISA-LEE-tests/tests_configuration.conf"
-				cat "${topdir}/src/GEISA-LEE-tests/user_configuration.conf"
-				echo "set +a"
+				print_cleanup_configuration
 				echo "export_application_layout '${app_name}'"
 				echo "\${PRIVILEGED_COMMAND} python3 - uninstall '${app_name}' <<'PYTHON'"
 				cat "${topdir}/src/GEISA-LEE-tests/manage_package.py"
@@ -424,9 +430,11 @@ cleanup_glee_ssh() {
 			SSH "sh -s" <<< "${cleanup_input}" || status=1
 		fi
 	done
-	SSH "set -a; . /tmp/conformance_tests/GEISA-LEE-tests/tests_configuration.conf; \
-		. /tmp/conformance_tests/GEISA-LEE-tests/user_configuration.conf; set +a; \
-		\${PRIVILEGED_COMMAND} rm -rf /tmp/conformance_tests '${APPLICATION_MANIFEST_PATH}' '${LXC_PATH}'" || status=1
+	cleanup_input="$({
+		print_cleanup_configuration
+		echo "\${PRIVILEGED_COMMAND} rm -rf /tmp/conformance_tests '${APPLICATION_MANIFEST_PATH}' '${LXC_PATH}'"
+	})"
+	SSH "sh -s" <<< "${cleanup_input}" || status=1
 	if [[ ${status} -ne 0 ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up LEE test artifacts on board"
 		echo "Manual cleanup required: de-provision '${REFERENCE_APPLICATION}' and unmount its filesystems, then remove '${app_dir}' and '/tmp/conformance_tests' on the board."
