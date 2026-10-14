@@ -561,7 +561,8 @@ exercise_container_storage_limit() {
 }
 
 #######################################
-# Check a container-visible mount size against its manifest limit.
+# Check a container-visible mount size against its manifest limit, then check
+# with geisa-test that the reference application cannot write past it.
 #######################################
 check_container_mount_limit() {
     local path="$1" field="$2" app limit size
@@ -570,6 +571,7 @@ check_container_mount_limit() {
         limit="$(container_backend storage-limit "${app}" "${field}")" || return 1
         size="$(get_container_mount_size "${app}" "${path}")" || return 1
         test "${size}" -le "${limit}" || return 1
+        exercise_container_storage_limit "${app}" "${field}" || return 1
     done
     return 0
 }
