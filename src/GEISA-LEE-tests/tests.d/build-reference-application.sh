@@ -43,6 +43,12 @@ esac
 	echo "Application directory not found: ${APPLICATION_DIR}" >&2
 	exit 2
 }
+for script in package.py generate-manifest.py; do
+	[[ -f "${APPLICATION_DIR}/scripts/${script}" ]] || {
+		echo "Packaging script not found: ${APPLICATION_DIR}/scripts/${script}" >&2
+		exit 2
+	}
+done
 
 MANIFEST="$(find "${APPLICATION_DIR}" -maxdepth 1 -type f -name '*-manifest.json' -print -quit)"
 [[ -n "${MANIFEST}" ]] || {
@@ -52,17 +58,32 @@ MANIFEST="$(find "${APPLICATION_DIR}" -maxdepth 1 -type f -name '*-manifest.json
 MANIFEST_METADATA="$(
 	python3 - "${MANIFEST}" <<'PY'
 import json
+from pathlib import Path
+import shlex
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as stream:
 	manifest = json.load(stream)["geisa-application-manifest"]["manifest"]
-print(manifest["name"], manifest["app-version"], sep="\t")
+start = shlex.split(manifest["default-launch-strategy"]["start-string"])
+resources = manifest["resources"]
+# Largest byte limit the probes must be able to exceed, plus 25% leeway, kept
+# within the int range geisa-test stores it in.
+limit_kib = max(resources["app-ram"], resources["storage-persistent"],
+                resources["storage-nonpersistent"])
+probe_target_bytes = min(limit_kib * 1024 * 5 // 4, 2**31 - 1)
+print(manifest["name"], manifest["app-version"], Path(start[0]).name,
+      probe_target_bytes, sep="\t")
 PY
 )" || {
 	echo "Failed to read application manifest: ${MANIFEST}" >&2
 	exit 2
 }
-IFS=$'\t' read -r APP_NAME APP_VERSION <<< "${MANIFEST_METADATA}"
+IFS=$'\t' read -r APP_NAME APP_VERSION APP_BINARY PROBE_TARGET_BYTES <<< "${MANIFEST_METADATA}"
+
+# Only geisa-test has a compiled-in probe cap to lift, see geisa-app.Dockerfile.
+if [[ "${APP_NAME}" != geisa-test ]]; then
+	PROBE_TARGET_BYTES=
+fi
 
 [[ "${APP_NAME}" =~ ^[A-Za-z0-9_.-]+$ ]] || {
 	echo "Invalid application name in manifest: ${APP_NAME}" >&2
@@ -72,10 +93,14 @@ IFS=$'\t' read -r APP_NAME APP_VERSION <<< "${MANIFEST_METADATA}"
 	echo "Invalid application version in manifest: ${APP_VERSION}" >&2
 	exit 2
 }
+[[ "${APP_BINARY}" =~ ^[A-Za-z0-9_.-]+$ ]] || {
+	echo "Invalid application binary in manifest: ${APP_BINARY}" >&2
+	exit 2
+}
 
 APP_OUTPUT_DIR="${OUTPUT_DIR}/${APP_NAME}"
-STAGE_DIR="${APP_OUTPUT_DIR}/rootfs"
-IMAGE="${APP_OUTPUT_DIR}/${APP_NAME}-${APP_VERSION}.squashfs"
+STAGE_DIR="${APP_OUTPUT_DIR}/build"
+IMAGE="${APP_OUTPUT_DIR}/${APP_NAME}-${APP_VERSION}-appoverlay.tgz"
 OUTPUT_MANIFEST="${APP_OUTPUT_DIR}/manifest.json"
 
 rm -rf "${APP_OUTPUT_DIR}"
@@ -83,13 +108,24 @@ mkdir -p "${STAGE_DIR}"
 
 "${CONTAINER_CLI}" build \
 	--platform "linux/${PLATFORM_ARCH}" \
-	--file "${SCRIPT_DIR}/../geisa-reference.Dockerfile" \
+	--build-arg "APP_BINARY=${APP_BINARY}" \
+	--build-arg "SOURCE_NAME=$(basename "${APPLICATION_DIR}")" \
+	--build-arg "PROBE_TARGET_BYTES=${PROBE_TARGET_BYTES}" \
+	--file "${SCRIPT_DIR}/../geisa-app.Dockerfile" \
 	--output "type=local,dest=${STAGE_DIR}" \
 	"${APPLICATION_DIR}" >&2
 
-chmod 0755 "${STAGE_DIR}/geisa-app"
-cp "${MANIFEST}" "${OUTPUT_MANIFEST}"
-mksquashfs "${STAGE_DIR}" "${IMAGE}" -all-root -noappend -quiet >&2
+chmod 0755 "${STAGE_DIR}/${APP_BINARY}"
+IFS=$'\t' read -r TOOLCHAIN_ID TOOLCHAIN_VERSION < "${STAGE_DIR}/toolchain"
+TOOLCHAIN_ID="${TOOLCHAIN_ID}" TOOLCHAIN_VERSION="${TOOLCHAIN_VERSION}" \
+	python3 "${APPLICATION_DIR}/scripts/package.py" \
+	--executable "${STAGE_DIR}/${APP_BINARY}" \
+	--member-name "${APP_BINARY}" \
+	--artifact "${IMAGE}" \
+	--manifest-template "${MANIFEST}" \
+	--manifest-output "${OUTPUT_MANIFEST}" \
+	--manifest-generator "${APPLICATION_DIR}/scripts/generate-manifest.py" >&2
+chmod 0644 "${IMAGE}" "${OUTPUT_MANIFEST}"
 rm -rf "${STAGE_DIR}"
 
 printf '%s\t%s\t%s\n' "${APP_NAME}" "${IMAGE}" "${OUTPUT_MANIFEST}"

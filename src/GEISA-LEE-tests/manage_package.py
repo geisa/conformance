@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 
 from pathlib import Path
 
@@ -29,13 +30,61 @@ WORK_PATH = os.environ["WORK_PATH"]
 ROOTFS_PATH = os.environ["ROOTFS_PATH"]
 APPLICATION_IMAGE_PATH = os.environ["APPLICATION_IMAGE_PATH"]
 PERSISTENT_IMAGE_PATH = os.environ["PERSISTENT_IMAGE_PATH"]
+MQTT_BROKER_HOST = os.environ["MQTT_BROKER_HOST"]
+MQTT_BROKER_PORT = os.environ["MQTT_BROKER_PORT"]
+MQTT_ADMIN_USER = os.environ["MQTT_ADMIN_USER"]
+MQTT_ADMIN_PASSWORD = os.environ["MQTT_ADMIN_PASSWORD"]
 
 PERSISTENT_MOUNT = "home/geisa"
 NONPERSISTENT_MOUNT = "tmp"
 NETWORK_POLICY_TABLE = "geisa_conformance"
 NETWORK_POLICY_QUOTA = "network_volume"
+MQTT_PASSWORD = "geisa-conformance"
+# Marks a broker client that install created, so uninstall only removes those.
+BROKER_CLIENT_MARKER = "broker-client"
+# API topics that every application may use. "{}" stands for its userid.
+BROKER_BASE_ACLS = (
+    ("publishClientSend", "geisa/api/platform/discovery/req/{}"),
+    ("publishClientSend", "geisa/api/app/manifest/req/{}"),
+    ("publishClientSend", "geisa/api/app/platform/status/{}"),
+    ("subscribeLiteral", "geisa/api/platform/discovery/rsp/{}"),
+    ("subscribeLiteral", "geisa/api/app/manifest/rsp/{}"),
+    ("subscribeLiteral", "geisa/api/platform/app/status/{}"),
+    ("subscribeLiteral", "geisa/api/platform/status"),
+)
+# API topics granted by each api-access entry of the manifest.
+BROKER_API_ACLS = {
+    "messaging": (
+        ("publishClientSend", "geisa/api/message/upstream/req/{}"),
+        ("publishClientSend", "geisa/api/message/downstream/rsp/{}"),
+        ("subscribeLiteral", "geisa/api/message/upstream/rsp/{}"),
+        ("subscribeLiteral", "geisa/api/message/downstream/req/{}"),
+    ),
+    "actuator-status": (
+        ("publishClientSend", "geisa/api/actuator/get/req/{}"),
+        ("subscribeLiteral", "geisa/api/actuator/get/rsp/{}"),
+    ),
+    "actuator-control": (
+        ("publishClientSend", "geisa/api/actuator/set/req/{}"),
+        ("subscribeLiteral", "geisa/api/actuator/set/rsp/{}"),
+    ),
+    "instantaneous": (
+        ("subscribeLiteral", "geisa/api/instantaneous/data"),
+    ),
+    "sensor": (
+        ("subscribeLiteral", "geisa/api/sensor"),
+        ("publishClientSend", "geisa/api/sensor-req/{}"),
+        ("subscribeLiteral", "geisa/api/sensor-rsp/{}"),
+    ),
+    "waveform": (
+        ("publishClientSend", "geisa/api/waveform/req/{}"),
+        ("subscribeLiteral", "geisa/api/waveform/rsp/{}"),
+    ),
+}
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+# transport:address:port notation of the manifest schema.
+PERMISSION_PATTERN = re.compile(r"(tcp:|udp:|)([0-9a-f:.]+|\[[0-9a-f:.]+\]|):([0-9]+)", re.IGNORECASE)
 CPUSET_PATTERN = re.compile(r"^[0-9]+(?:-[0-9]+)?(?:,[0-9]+(?:-[0-9]+)?)*$")
 
 def environment_integer(name: str) -> int:
@@ -85,44 +134,66 @@ def conformance_network_address(app_name: str, gateway: str, prefix: int) -> str
     return str(address)
 
 
-def manifest_network_policy(communication: dict) -> dict:
-    """Translate manifest communication permissions into an enforceable network policy.
+def parse_network_permission(section: str, direction: str, permission: object) -> dict:
+    """Parse one transport:address:port permission string of the manifest.
+
+    Args:
+        section: Manifest network section holding the permission.
+        direction: "inbound" or "outbound".
+        permission: Permission string to parse.
+    """
+    if not isinstance(permission, str):
+        raise ValueError(f"{section} {direction} network permission must be a string")
+    match = PERMISSION_PATTERN.fullmatch(permission)
+    if not match:
+        raise ValueError(f"invalid {section} {direction} network permission: {permission}")
+    transport, address, port = match.groups()
+    address = address.strip("[]")
+    if address:
+        address = str(ipaddress.ip_address(address))
+    return {
+        # No transport means both TCP and UDP, no address means any address.
+        "transport": transport.rstrip(":").lower() or None,
+        "address": address,
+        "port": int(port),
+    }
+
+
+def manifest_network_sections(communication: dict) -> list[dict]:
+    """Translate communication permissions in the manifest into enforceable network sections.
 
     Args:
         communication: Manifest communication section to validate and interpret.
     """
-    # Network access is denied by default, following the principle of least privilege.
-    denied = {
-        "network_access": False,
-        "network_transport": None,
-        "network_port": 0,
-        "network_daily_volume_bytes": 0,
-    }
-    if not isinstance(communication, dict) or communication.get("HAN") is not True:
-        return denied
-    local = communication.get("local")
-    if not isinstance(local, dict):
-        return denied
-    outbound = local.get("outbound")
-    if not isinstance(outbound, list) or not outbound:
-        return denied
-    permission = outbound[0]
-    if not isinstance(permission, str):
-        raise ValueError("local outbound network permission must be a string")
-    match = re.fullmatch(r"(?:(tcp|udp):)?.*:([0-9]+)", permission, re.IGNORECASE)
-    if not match:
-        raise ValueError(f"invalid local outbound network permission: {permission}")
-    transport_group = match.group(1)
-    port_group = match.group(2)
-    transport = transport_group.lower() if transport_group else None    # None here (when network access is allowed) means both TCP and UDP are allowed
-    port = int(port_group)
-    daily_volume = int(local["daily-volume"])
-    return {
-        "network_access": True,
-        "network_transport": transport,
-        "network_port": port,
-        "network_daily_volume_bytes": daily_volume,
-    }
+    sections = []
+    if not isinstance(communication, dict):
+        return sections
+    granted = []
+    if communication.get("HAN") is True:
+        granted.append("local")
+    if communication.get("FAN") is True:
+        granted.extend(("operator", "internet"))
+    for section in granted:
+        requirements = communication.get(section)
+        if not isinstance(requirements, dict):
+            continue
+        permissions = {
+            direction: [
+                parse_network_permission(section, direction, permission)
+                for permission in requirements.get(direction, [])
+            ]
+            for direction in ("inbound", "outbound")
+        }
+        if not permissions["inbound"] and not permissions["outbound"]:
+            continue
+        sections.append(
+            {
+                "section": section,
+                "daily_volume_bytes": int(requirements["daily-volume"]),
+                **permissions,
+            }
+        )
+    return sections
 
 
 def run(*command: str, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -203,6 +274,7 @@ def read_manifest(path: Path, application_name: str | None = None) -> dict:
                 "REFERENCE_LXC_NONPERSISTENT_KIB",
             ),
             "communication": communication,
+            "network_sections": manifest_network_sections(communication),
             "api_access": manifest.get("api-access", {}),
             "network_bridge": os.environ["LXC_NETWORK_BRIDGE"],
             "network_gateway": network_gateway,
@@ -211,7 +283,6 @@ def read_manifest(path: Path, application_name: str | None = None) -> dict:
                 name, network_gateway, network_prefix
             ),
         }
-        values.update(manifest_network_policy(communication))
         if "threads" in resources:
             values["threads"] = int(resources["threads"])
     except (KeyError, TypeError, ValueError) as error:
@@ -234,7 +305,6 @@ def read_manifest(path: Path, application_name: str | None = None) -> dict:
         "cpu_weight",
         "persistent_kib",
         "nonpersistent_kib",
-        "network_daily_volume_bytes",
     ):
         if values[field] < 0:
             raise ValueError(f"{field} cannot be negative")
@@ -242,9 +312,12 @@ def read_manifest(path: Path, application_name: str | None = None) -> dict:
         raise ValueError("memory and CPU percentage constraints must be greater than zero")
     if not 1 <= values["cpu_weight"] <= 10000:
         raise ValueError("cpu_weight must be between 1 and 10000")
-    if values["network_access"]:
-        if not 1 <= values["network_port"] <= 65535:
-            raise ValueError("network_port must be between 1 and 65535")
+    for section in values["network_sections"]:
+        if section["daily_volume_bytes"] < 0:
+            raise ValueError(f"{section['section']} daily-volume cannot be negative")
+        for permission in section["inbound"] + section["outbound"]:
+            if not 1 <= permission["port"] <= 65535:
+                raise ValueError("network port must be between 1 and 65535")
     for field in ("cpuset_cpus", "cpuset_mems"):
         if not CPUSET_PATTERN.fullmatch(values[field]):
             raise ValueError(f"invalid {field}: {values[field]}")
@@ -369,21 +442,14 @@ def write_lxc_config(metadata: dict, root: Path) -> None:
         "lxc.environment = USER=geisa",
         "lxc.environment = PATH=/usr/local/bin:/usr/bin:/bin",
         f"lxc.mount.entry = {log_socket} dev/log none bind,optional,create=file 0 0",
+        # Every application gets a network interface to reach the broker.
+        "lxc.net.0.type = veth",
+        f"lxc.net.0.link = {metadata['network_bridge']}",
+        "lxc.net.0.flags = up",
+        "lxc.net.0.name = eth0",
+        f"lxc.net.0.ipv4.address = {metadata['network_address']}/{metadata['network_prefix']}",
+        f"lxc.net.0.ipv4.gateway = {metadata['network_gateway']}",
     ]
-    if metadata["network_access"]:
-        lines.extend(
-            (
-                "lxc.net.0.type = veth",
-                f"lxc.net.0.link = {metadata['network_bridge']}",
-                "lxc.net.0.flags = up",
-                "lxc.net.0.name = eth0",
-                (
-                    "lxc.net.0.ipv4.address = "
-                    f"{metadata['network_address']}/{metadata['network_prefix']}"
-                ),
-                f"lxc.net.0.ipv4.gateway = {metadata['network_gateway']}",
-            )
-        )
     lines.extend(
         (
             f"lxc.cgroup2.cpuset.mems = {metadata['cpuset_mems']}",
@@ -410,7 +476,11 @@ def mount_application(metadata: dict) -> None:
     if not mounted(item["base"]):
         run("mount", "-t", IMAGE_FSTYPE, "-o", "loop,ro", metadata["base_image"], str(item["base"]))
     if not mounted(item["application"]):
-        run("mount", "-t", IMAGE_FSTYPE, "-o", "loop,ro", str(item["image"]), str(item["application"]))
+        # The appoverlay package is unpacked into its own read-only layer.
+        run("mount", "-t", "tmpfs", "-o", "mode=0755", "tmpfs", str(item["application"]))
+        with tarfile.open(item["image"], "r:gz") as package:
+            package.extractall(item["application"], filter="data")
+        run("mount", "-o", "remount,ro", str(item["application"]))
     if not mounted(item["rootfs"]):
         (item["upper"] / NONPERSISTENT_MOUNT).mkdir(parents=True, exist_ok=True)
         (item["upper"] / PERSISTENT_MOUNT).mkdir(parents=True, exist_ok=True)
@@ -516,33 +586,48 @@ def network_policy_rules(metadata: dict) -> str:
         metadata: Validated application metadata constructed from its manifest.
     """
     gateway = metadata["network_gateway"]
-    port = metadata["network_port"]
-    volume = metadata["network_daily_volume_bytes"]
-    transport = metadata["network_transport"]
-    protocols = ("tcp", "udp") if transport is None else (transport,)
-    output_lines = []
-    input_lines = []
-    for protocol in protocols:
-        output_lines.append(
-            f"        ip daddr {gateway} {protocol} dport {port} "
-            f"quota name \"{NETWORK_POLICY_QUOTA}\" drop"
-        )
-        output_lines.append(
-            f"        ip daddr {gateway} {protocol} dport {port} accept"
-        )
-        input_lines.append(
-            f"        ip saddr {gateway} {protocol} sport {port} "
-            f"quota name \"{NETWORK_POLICY_QUOTA}\" drop"
-        )
-        input_lines.append(
-            f"        ip saddr {gateway} {protocol} sport {port} "
-            f"ct state established accept"
-        )
+    # The broker is always reachable and its traffic does not count in any daily volume.
+    output_lines = [
+        "        oifname \"lo\" accept",
+        f"        ip daddr {gateway} tcp dport {MQTT_BROKER_PORT} accept",
+    ]
+    input_lines = [
+        "        iifname \"lo\" accept",
+        f"        ip saddr {gateway} tcp sport {MQTT_BROKER_PORT} ct state established accept",
+    ]
+    quota_lines = []
+    for section in metadata["network_sections"]:
+        quota = f"{NETWORK_POLICY_QUOTA}_{section['section']}"
+        quota_lines.append(f"    quota {quota} {{ over {section['daily_volume_bytes']} bytes }}")
+        for direction in ("outbound", "inbound"):
+            for permission in section[direction]:
+                transport = permission["transport"]
+                protocols = ("tcp", "udp") if transport is None else (transport,)
+                address = permission["address"]
+                family = "ip6" if ":" in address else "ip"
+                to_remote = f"{family} daddr {address} " if address else ""
+                from_remote = f"{family} saddr {address} " if address else ""
+                for protocol in protocols:
+                    # Outbound: the port is the remote one and the application
+                    # opens the connection. Inbound: the port is the
+                    # application's own and the remote side opens it.
+                    if direction == "outbound":
+                        opened = f"{to_remote}{protocol} dport {permission['port']}"
+                        replied = f"{from_remote}{protocol} sport {permission['port']}"
+                        opening, replying = output_lines, input_lines
+                    else:
+                        opened = f"{from_remote}{protocol} dport {permission['port']}"
+                        replied = f"{to_remote}{protocol} sport {permission['port']}"
+                        opening, replying = input_lines, output_lines
+                    opening.append(f"        {opened} quota name \"{quota}\" drop")
+                    opening.append(f"        {opened} accept")
+                    replying.append(f"        {replied} quota name \"{quota}\" drop")
+                    replying.append(f"        {replied} ct state established accept")
     output_rules = "\n".join(output_lines)
     input_rules = "\n".join(input_lines)
+    quotas = "".join(f"{line}\n" for line in quota_lines)
     return f"""table inet {NETWORK_POLICY_TABLE} {{
-    quota {NETWORK_POLICY_QUOTA} {{ over {volume} bytes }}
-    chain output {{
+{quotas}    chain output {{
         type filter hook output priority 0; policy drop;
 {output_rules}
     }}
@@ -581,7 +666,7 @@ def install_network_policy(metadata: dict) -> None:
         metadata: Validated application metadata constructed from its manifest.
     """
     name = metadata["name"]
-    if not network_quota_supported(name):
+    if metadata["network_sections"] and not network_quota_supported(name):
         raise RuntimeError(
             "the kernel lacks nftables quota support (CONFIG_NFT_QUOTA)"
         )
@@ -601,6 +686,71 @@ def install_network_policy(metadata: dict) -> None:
     run_in_network_namespace(
         name, "nft", "-f", "-", input_text=network_policy_rules(metadata)
     )
+
+
+def broker_dynsec(*arguments: str, check: bool = True) -> str:
+    """Run a dynamic security command on the MQTT broker as its admin.
+
+    mosquitto_ctrl exits with 0 even when the command fails, so its output is
+    checked instead.
+
+    Args:
+        arguments: dynsec command and its arguments.
+        check: Whether an error reported by the broker raises an exception.
+    """
+    output = subprocess.run(
+        (
+            "mosquitto_ctrl", "-h", MQTT_BROKER_HOST, "-p", MQTT_BROKER_PORT,
+            "-u", MQTT_ADMIN_USER, "-P", MQTT_ADMIN_PASSWORD, "dynsec", *arguments,
+        ),
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    ).stdout
+    errors = [line for line in output.splitlines() if "Error:" in line]
+    if check and errors:
+        raise RuntimeError(f"broker {errors[0]}")
+    return output
+
+
+def register_broker_client(metadata: dict, root: Path) -> None:
+    """Give an application a broker client with the credentials of its mqtt.conf.
+
+    Its role only allows the topics that its manifest api-access requests.
+    A client that the platform already provides is left as it is.
+
+    Args:
+        metadata: Validated application metadata constructed from its manifest.
+        root: Application installation directory.
+    """
+    name = metadata["name"]
+    if "Error:" not in broker_dynsec("getClient", name, check=False):
+        return
+    (root / BROKER_CLIENT_MARKER).touch()
+    role = f"{name}-topics"
+    acls = list(BROKER_BASE_ACLS)
+    for api, granted in metadata["api_access"].items():
+        if granted is True:
+            acls.extend(BROKER_API_ACLS.get(api, ()))
+    broker_dynsec("createClient", name, "-p", MQTT_PASSWORD)
+    broker_dynsec("createRole", role)
+    for acl_type, topic in acls:
+        broker_dynsec("addRoleACL", role, acl_type, topic.format(name), "allow")
+    broker_dynsec("addClientRole", name, role)
+
+
+def unregister_broker_client(name: str, root: Path) -> None:
+    """Remove the broker client and role that install created, if any.
+
+    Args:
+        name: Installed application name, also its broker userid.
+        root: Application installation directory.
+    """
+    if not (root / BROKER_CLIENT_MARKER).is_file():
+        return
+    broker_dynsec("deleteClient", name, check=False)
+    broker_dynsec("deleteRole", f"{name}-topics", check=False)
 
 
 def deactivate(name: str) -> None:
@@ -628,6 +778,7 @@ def uninstall(name: str) -> None:
         name: Installed application name.
     """
     root = app_directory(name)
+    unregister_broker_client(name, root)
     if not (root / "manifest.json").is_file():
         shutil.rmtree(root, ignore_errors=True)
         return
@@ -638,15 +789,15 @@ def uninstall(name: str) -> None:
 
 
 def install(image: Path, manifest_path: Path, application_name: str | None = None) -> None:
-    """Provision an application image, manifest, runtime configuration, and storage.
+    """Provision an application package, manifest, runtime configuration, and storage.
 
     Args:
-        image: Application filesystem image to install.
+        image: Application appoverlay package (.tgz) to install.
         manifest_path: Manifest JSON file that defines the application.
         application_name: Optional installed name that overrides the manifest name.
     """
     if not image.is_file() or not manifest_path.is_file():
-        raise ValueError("application image or manifest is missing")
+        raise ValueError("application package or manifest is missing")
     metadata = read_manifest(manifest_path, application_name)
     metadata["base_image"] = str(find_base_image())
     root = app_directory(metadata["name"])
@@ -658,8 +809,9 @@ def install(image: Path, manifest_path: Path, application_name: str | None = Non
     shutil.copy2(image, item["image"])
     shutil.copy2(manifest_path, root / "manifest.json")
     (item["configuration"] / "etc/geisa/mqtt.conf").write_text(
-        f"HOST=127.0.0.1\nPORT=1883\nUSERID={metadata['name']}\n"
-        "PASSWORD=geisa-conformance\n",
+        f"HOST={metadata['network_gateway']}\n"
+        f"PORT={MQTT_BROKER_PORT}\nUSERID={metadata['name']}\n"
+        f"PASSWORD={MQTT_PASSWORD}\n",
         encoding="utf-8",
     )
     write_launcher(item["configuration"], metadata)
@@ -671,8 +823,10 @@ def install(image: Path, manifest_path: Path, application_name: str | None = Non
     write_lxc_config(metadata, root)
     try:
         mount_application(metadata)
-    except (OSError, RuntimeError, subprocess.CalledProcessError):
+        register_broker_client(metadata, root)
+    except (OSError, RuntimeError, subprocess.CalledProcessError, tarfile.TarError):
         try:
+            unregister_broker_client(metadata["name"], root)
             unmount_application(metadata)
         finally:
             shutil.rmtree(root, ignore_errors=True)
@@ -702,8 +856,7 @@ def activate(name: str) -> None:
             "-t",
             str(metadata["start_timeout"]),
         )
-    if metadata["network_access"]:
-        install_network_policy(metadata)
+    install_network_policy(metadata)
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -732,7 +885,9 @@ def main() -> int:
             deactivate(arguments.name)
         elif arguments.operation == "uninstall":
             uninstall(arguments.name)
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+    except (
+        OSError, ValueError, RuntimeError, subprocess.CalledProcessError, tarfile.TarError
+    ) as error:
         print(f"manage_package: {error}", file=sys.stderr)
         return 1
     return 0

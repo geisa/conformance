@@ -14,6 +14,10 @@ REFERENCE_LXC_CPU_WEIGHT="${REFERENCE_LXC_CPU_WEIGHT:-}"
 REBOOT_PERSISTENCE_MARKER="${REBOOT_PERSISTENCE_MARKER:-}"
 PRIVILEGED_COMMAND="${PRIVILEGED_COMMAND:-}"
 
+# The reference application is installed under the name its manifest gives.
+REFERENCE_APPLICATION_NAME="$(manifest_application_name "${APPLICATION_MANIFEST_PATH}" 2>/dev/null)"
+APPLICATIONS="${APPLICATIONS:-${REFERENCE_APPLICATION_NAME}}"
+
 # Mount points and journaling filesystem expectations are mandated by the GEISA
 # specification and are not configurable.
 CONTAINER_PERSISTENT_MOUNT="/home/geisa"
@@ -270,18 +274,22 @@ EOF
 
 #######################################
 # Run manage_package.py for one application, with its resolved host layout.
+#
+# The first argument names the application whose resources are provisioned.
+# The remaining arguments are the manage_package.py command line.
 #######################################
 manage_package() {
     local app="$1"
     shift
     (
-        export APPLICATIONS LXC_PATH REFERENCE_APPLICATION
+        export APPLICATIONS LXC_PATH
         export CONTAINER_BASE_IMAGE CONTAINER_BASE_IMAGE_DIR CONTAINER_BASE_IMAGE_GLOB
         export CONTAINER_IMAGE_FSTYPE CONTAINER_PERSISTENT_FSTYPE
         export LXC_NETWORK_BRIDGE LXC_NETWORK_GATEWAY LXC_NETWORK_PREFIX
         export REFERENCE_LXC_CPUSET_CPUS REFERENCE_LXC_CPUSET_MEMS
         export REFERENCE_LXC_CPU_PERCENT REFERENCE_LXC_CPU_WEIGHT REFERENCE_LXC_MEMORY_KIB
         export REFERENCE_LXC_PERSISTENT_KIB REFERENCE_LXC_NONPERSISTENT_KIB
+        export MQTT_BROKER_HOST MQTT_BROKER_PORT MQTT_ADMIN_USER MQTT_ADMIN_PASSWORD
         export_application_layout "${app}"
         host_exec python3 "${LEE_TESTS_DIR}/manage_package.py" "$@"
     ) >/dev/null 2>&1
@@ -372,6 +380,8 @@ check_container_namespaces_are_isolated() {
 
 #######################################
 # Check one cgroup constraint for every configured application.
+#
+# Exercising a limit may stop the application, so its state is restored after.
 #######################################
 check_all_container_cgroup_constraints() {
     local constraint="$1" app pid cgroup cgroup_entries
@@ -380,7 +390,7 @@ check_all_container_cgroup_constraints() {
         cgroup_entries="$(host_exec cat "/proc/${pid}/cgroup")" || return 1
         cgroup="$(awk -F: '$1 == "0" && $2 == "" { print $3; exit }' <<< "${cgroup_entries}")"
         test -n "${cgroup}" && test "${cgroup}" != / || return 1
-        container_backend cgroup \
+        keep_container_states container_backend cgroup \
             "${constraint}" "${pid}" "${app}" \
             "${REFERENCE_LXC_CPUSET_CPUS}" \
             "${REFERENCE_LXC_CPU_WEIGHT}" || return 1
@@ -410,37 +420,6 @@ check_containers_are_isolated() {
         roots="${roots:+${roots} }${root}"
     done
     return 0
-}
-
-#######################################
-# Read every configured storage limit from the deployment manifest.
-#
-# The limits are collected in a single manifest access and kept in memory, so
-# later lookups do not read the manifest again.
-#######################################
-collect_application_limits() {
-    local limits
-    if [[ -n "${STORAGE_LIMITS:-}" ]]; then
-        return 0
-    fi
-    limits="$(container_backend storage-limits)" || return 1
-    STORAGE_LIMITS=$'\n'"${limits}"$'\n'
-    return 0
-}
-
-#######################################
-# Return a collected storage limit for an application.
-#######################################
-get_application_limit() {
-    local app="$1" field="$2" key limit
-    key=$'\n'"${app}|${field}|"
-    case "${STORAGE_LIMITS:-}" in
-        *"${key}"*) : ;;
-        *) return 1 ;;
-    esac
-    limit="${STORAGE_LIMITS##*"${key}"}"
-    limit="${limit%%$'\n'*}"
-    printf '%s\n' "${limit}"
 }
 
 #######################################
@@ -561,13 +540,12 @@ get_container_mount_size() {
 #######################################
 check_container_read_write_size() {
     local app limit size
-    collect_application_limits || return 1
     collect_container_mount_sizes || return 1
     for app in ${APPLICATIONS}; do
         if is_container_root_read_only "${app}"; then
             continue
         fi
-        limit="$(get_application_limit "${app}" nonpersistent)" || return 1
+        limit="$(container_backend storage-limit "${app}" nonpersistent)" || return 1
         size="$(get_container_mount_size "${app}" /)" || return 1
         test "${size}" -le "${limit}" || return 1
     done
@@ -575,25 +553,32 @@ check_container_read_write_size() {
 }
 
 #######################################
-# Check a container-visible mount size against its manifest limit.
+# Check with geisa-test that the reference application cannot write past a
+# storage limit, then restore the application state.
+#######################################
+exercise_container_storage_limit() {
+    keep_container_states container_backend storage-enforcement "$1" "$2"
+}
+
+#######################################
+# Check a container-visible mount size against its manifest limit, then check
+# with geisa-test that the reference application cannot write past it.
 #######################################
 check_container_mount_limit() {
     local path="$1" field="$2" app limit size
-    collect_application_limits || return 1
     collect_container_mount_sizes || return 1
     for app in ${APPLICATIONS}; do
-        limit="$(get_application_limit "${app}" "${field}")" || return 1
+        limit="$(container_backend storage-limit "${app}" "${field}")" || return 1
         size="$(get_container_mount_size "${app}" "${path}")" || return 1
         test "${size}" -le "${limit}" || return 1
+        exercise_container_storage_limit "${app}" "${field}" || return 1
     done
     return 0
 }
 
-# TODO: ensure threshold is really enforced after workload done (and check if is
-# actually throttled)
-# test workload will be given with geisa-test
 #######################################
-# Check host-side storage mounts against their manifest limits.
+# Check host-side storage mounts against their manifest limits, then check with
+# geisa-test that the reference application cannot write past them.
 #
 # This is separate from check_container_mount_limit(), which checks the path
 # from inside the application container.
@@ -606,10 +591,9 @@ check_container_storage_limit() {
         nonpersistent) mount_path="${CONTAINER_NONPERSISTENT_MOUNT}" ;;
         *) return 2 ;;
     esac
-    collect_application_limits || return 1
     for app in ${APPLICATIONS}; do
         mount_point="$(layout_rootfs_path "${app}")${mount_path}"
-        declared_kib="$(get_application_limit "${app}" "${storage_kind}")" || return 1
+        declared_kib="$(container_backend storage-limit "${app}" "${storage_kind}")" || return 1
         case "${declared_kib}" in
             *[!0-9]*|'') return 1 ;;
             *) : ;;
@@ -631,6 +615,7 @@ check_container_storage_limit() {
             *) : ;;
         esac
         test "${actual_kib}" -le "${declared_kib}" || return 1
+        exercise_container_storage_limit "${app}" "${storage_kind}" || return 1
     done
     return 0
 }
@@ -710,24 +695,21 @@ check_container_image_layer() {
 # Check that declared network access exposes standard sockets.
 #######################################
 check_container_network_standard_sockets() {
-    container_backend network standard-sockets
-    # TODO: Add geisa-test traffic assertions for allowed socket connectivity
+    keep_container_states container_backend network standard-sockets
 }
 
 #######################################
 # Check the per-application network access-control policy.
 #######################################
 check_container_network_acl() {
-    container_backend network acl
-    # TODO: Add geisa-test traffic assertions for denied undeclared network access
+    keep_container_states container_backend network acl
 }
 
 #######################################
 # Check the per-application network volume limit policy.
 #######################################
 check_container_network_volume_limit() {
-    container_backend network volume-limit
-    # TODO: Add geisa-test traffic assertions for quota exhaustion.
+    keep_container_states container_backend network volume-limit
 }
 
 #######################################
@@ -779,6 +761,18 @@ restore_container_states() {
         fi
     done < "${CONTAINER_STATE_FILE}"
     rm -f "${CONTAINER_STATE_FILE}"
+}
+
+#######################################
+# Run a command that may stop or replace the applications, then return each
+# application to its previous state.
+#######################################
+keep_container_states() {
+    local status=0
+    save_container_states || return 1
+    "$@" || status=1
+    restore_container_states
+    return "${status}"
 }
 
 #######################################
