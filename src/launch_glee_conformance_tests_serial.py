@@ -263,6 +263,32 @@ def detect_board_state(p, args):
         print("Warning: enable to detect board state, continuing anyway\n")
 
 
+def print_platform_details(p):
+    """
+    Print the board details with src/platform-details.sh. The script is sent
+    as a heredoc and run with sh, so the board needs nothing but a shell.
+    """
+    with open(f"{TOPDIR}/src/platform-details.sh", encoding="utf-8") as script:
+        lines = script.read().splitlines()
+    try:
+        p.sendline("cat > /tmp/platform-details.sh <<'PLATFORM-DETAILS-EOF'")
+        for line in lines:
+            # A tab would trigger completion in an interactive shell.
+            p.sendline(line.replace("\t", "    "))
+        p.sendline("PLATFORM-DETAILS-EOF")
+        p.expect(r"(\S*)@\S*:.+(#|\$)")
+        # The split end marker matches the command output, not its echo.
+        p.sendline("sh /tmp/platform-details.sh; echo PLATFORM-DETAILS-E''ND")
+        p.expect(r"E''ND\r?\n")
+        p.expect(r"PLATFORM-DETAILS-END", timeout=30)
+        details = p.before.decode("utf-8").replace("\r", "").strip()
+        print("Platform details:")
+        print("\n".join(f"  {line}" for line in details.splitlines()) + "\n")
+        p.expect(r"(\S*)@\S*:.+(#|\$)")
+    except pexpect.exceptions.TIMEOUT:
+        print("Warning: Failed to read the platform details, continuing anyway\n")
+
+
 def main():
     """
     Main function.
@@ -282,6 +308,7 @@ def main():
             p = pexpect.fdpexpect.fdspawn(ser, timeout=5)
 
             detect_board_state(p, args)
+            print_platform_details(p)
 
             print("Cleaning previous test results on board\n")
             cleanup(p)

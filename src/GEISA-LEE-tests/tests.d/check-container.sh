@@ -53,7 +53,7 @@ check_privileged_access() {
 #######################################
 privileged_test_id() {
     local test_identifier="$1" test_description="$3"
-    if has_privileged_access && [[ -z "${__skip_condition:-}" ]]; then
+    if has_privileged_access >/dev/null && [[ -z "${__skip_condition:-}" ]]; then
         test_id "$@"
         return
     fi
@@ -67,9 +67,14 @@ privileged_test_id() {
 
 #######################################
 # Report whether privileged tests are qualified to run.
+#
+# Unmet "when" conditions print why, as the skip reason.
 #######################################
 has_privileged_access() {
-    test "${PRIVILEGED_ACCESS_AVAILABLE:-false}" = true
+    test "${PRIVILEGED_ACCESS_AVAILABLE:-false}" = true && return 0
+    echo "Host and container inspection is unavailable. Set PRIVILEGED_COMMAND" \
+        "in user_configuration.conf, for example \"sudo -n -E\"."
+    return 1
 }
 
 #######################################
@@ -478,19 +483,19 @@ check_container_read_write_permissions() {
 is_any_container_root_read_write() {
     local app
     has_privileged_access || return 1
-    if [[ "${ROOT_WRITE_STATE_KNOWN:-}" = true ]]; then
-        [[ "${ANY_CONTAINER_ROOT_READ_WRITE:-}" = true ]]
-        return
+    if [[ "${ROOT_WRITE_STATE_KNOWN:-}" != true ]]; then
+        ANY_CONTAINER_ROOT_READ_WRITE=false
+        for app in ${APPLICATIONS}; do
+            if ! is_container_root_read_only "${app}"; then
+                ANY_CONTAINER_ROOT_READ_WRITE=true
+                break
+            fi
+        done
+        ROOT_WRITE_STATE_KNOWN=true
     fi
-    for app in ${APPLICATIONS}; do
-        if ! is_container_root_read_only "${app}"; then
-            ANY_CONTAINER_ROOT_READ_WRITE=true
-            ROOT_WRITE_STATE_KNOWN=true
-            return 0
-        fi
-    done
-    ANY_CONTAINER_ROOT_READ_WRITE=false
-    ROOT_WRITE_STATE_KNOWN=true
+    [[ "${ANY_CONTAINER_ROOT_READ_WRITE}" = true ]] && return 0
+    echo "Every application container has a read-only root filesystem," \
+        "so this requirement does not apply."
     return 1
 }
 
@@ -717,7 +722,20 @@ check_container_network_volume_limit() {
 #######################################
 has_container_network_grant() {
     has_privileged_access || return 1
-    container_backend has-network-grant
+    container_backend has-network-grant && return 0
+    echo "No application manifest grants direct network access. Set HAN or FAN" \
+        "to true in the manifest communication section, with inbound or outbound" \
+        "permissions, to run this test."
+    return 1
+}
+
+#######################################
+# Succeed when the tests could set up the given network limit, acl or volume,
+# else tell why not.
+#######################################
+has_container_network_policy() {
+    has_container_network_grant || return 1
+    container_backend has-network-policy "$1"
 }
 
 #######################################

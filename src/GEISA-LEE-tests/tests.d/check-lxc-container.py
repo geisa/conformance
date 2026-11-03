@@ -564,17 +564,6 @@ def network_policy(app_name: str) -> dict | None:
     return sections or None
 
 
-def policy_permissions(policy: dict):
-    """Yield the inbound and outbound permissions of every section.
-
-    Args:
-        policy: Parsed network policy.
-    """
-    for section in policy.values():
-        yield from section["inbound"]
-        yield from section["outbound"]
-
-
 def init_pid(app_name: str) -> int:
     """Get the init process ID for an application container.
 
@@ -590,96 +579,6 @@ def init_pid(app_name: str) -> int:
     return int(result.stdout.strip())
 
 
-def in_network_namespace(
-    app_name: str, *command: str, check: bool = True
-) -> subprocess.CompletedProcess[str]:
-    """Run a command inside an application's network namespace.
-
-    Args:
-        app_name: Installed application name.
-        command: Command and arguments to run in the namespace.
-        check: Whether a nonzero exit status raises an exception.
-    """
-    return subprocess.run(
-        ("nsenter", "--target", str(init_pid(app_name)), "--net", *command),
-        check=check,
-        text=True,
-        capture_output=True,
-    )
-
-
-def network_ruleset(app_name: str) -> list:
-    """Read the nftables ruleset from an application network namespace.
-
-    Args:
-        app_name: Installed application name.
-    """
-    result = in_network_namespace(app_name, "nft", "-j", "list", "ruleset")
-    ruleset = json.loads(result.stdout)["nftables"]
-    return ruleset
-
-
-def hook_policy(ruleset: list, hook: str) -> str | None:
-    """Find the default policy for a named nftables hook.
-
-    Args:
-        ruleset: Parsed nftables ruleset.
-        hook: Hook name to find, such as output or input.
-    """
-    for item in ruleset:
-        chain = item.get("chain")
-        if chain and chain.get("hook") == hook:
-            return chain.get("policy")
-    return None
-
-
-def granted_matches(ruleset: list):
-    """Yield protocol and port pairs accepted by nftables rules.
-
-    Args:
-        ruleset: Parsed nftables ruleset.
-    """
-    for item in ruleset:
-        rule = item.get("rule")
-        if not rule:
-            continue
-        expressions = rule.get("expr", [])
-        if not any(isinstance(expr, dict) and "accept" in expr for expr in expressions):
-            continue
-        for expr in expressions:
-            match = expr.get("match") if isinstance(expr, dict) else None
-            if not match:
-                continue
-            left = match.get("left", {})
-            payload = left.get("payload", {}) if isinstance(left, dict) else {}
-            if payload.get("field") in ("dport", "sport"):
-                yield payload.get("protocol"), match.get("right")
-
-
-def rule_grants(ruleset: list, protocol: str, port: int) -> bool:
-    """Check whether a ruleset accepts a protocol and port pair.
-
-    Args:
-        ruleset: Parsed nftables ruleset.
-        protocol: Transport protocol to find.
-        port: Network port to find.
-    """
-    return any(
-        candidate == protocol and value == port
-        for candidate, value in granted_matches(ruleset)
-    )
-
-
-def granted_ports(ruleset: list) -> set:
-    """Return all ports accepted by the ruleset.
-
-    Args:
-        ruleset: Parsed nftables ruleset.
-    """
-    ports = {value for _, value in granted_matches(ruleset) if isinstance(value, int)}
-    return ports
-
-
 def expected_protocols(permission: dict) -> tuple:
     """Return the protocols allowed by a network permission.
 
@@ -689,94 +588,6 @@ def expected_protocols(permission: dict) -> tuple:
     transport = permission["transport"]
     protocols = ("tcp", "udp") if transport is None else (transport,)
     return protocols
-
-
-def check_standard_sockets(app_name: str) -> None:
-    """Check that every inbound and outbound manifest port is allowed for its protocols.
-
-    Args:
-        app_name: Installed application name.
-    """
-    policy = network_policy(app_name)
-    if policy is None:
-        return
-    ruleset = network_ruleset(app_name)
-    for permission in policy_permissions(policy):
-        for protocol in expected_protocols(permission):
-            if not rule_grants(ruleset, protocol, permission["port"]):
-                raise RuntimeError(
-                    f"no rule grants socket connectivity to {protocol} port {permission['port']}"
-                )
-
-
-def check_acl(app_name: str) -> None:
-    """Check that network hooks deny traffic outside the manifest policy and the MQTT port.
-
-    Args:
-        app_name: Installed application name.
-    """
-    policy = network_policy(app_name)
-    if policy is None:
-        return
-    ruleset = network_ruleset(app_name)
-    for hook in ("output", "input"):
-        if hook_policy(ruleset, hook) != "drop":
-            raise RuntimeError(
-                f"the {hook} hook does not deny traffic by default "
-                "(principle of least privilege)"
-            )
-    allowed = {permission["port"] for permission in policy_permissions(policy)}
-    allowed.add(mqtt_address(app_name)[1])
-    extra = granted_ports(ruleset) - allowed
-    if extra:
-        raise RuntimeError(
-            f"ports {sorted(extra)} are granted but are absent from the manifest's network policy"
-        )
-
-
-def volume_quotas(ruleset: list) -> list:
-    """Return byte limits declared by nftables quota objects.
-
-    Args:
-        ruleset: Parsed nftables ruleset.
-    """
-    quotas = []
-    for item in ruleset:
-        quota = item.get("quota")
-        if not isinstance(quota, dict):
-            continue
-        limit = quota.get("bytes")
-        if isinstance(limit, int):
-            quotas.append(limit)
-    return quotas
-
-
-def check_volume_limit(app_name: str) -> None:
-    """Check that the daily volume of every manifest section matches an nftables quota.
-
-    Args:
-        app_name: Installed application name.
-    """
-    policy = network_policy(app_name)
-    if policy is None:
-        return
-    ruleset = network_ruleset(app_name)
-    limits = volume_quotas(ruleset)
-    if not limits:
-        raise RuntimeError("no volume quota defined")
-    for name, section in policy.items():
-        if section["daily_volume"] not in limits:
-            raise RuntimeError(
-                f"no volume quota matches the {name} daily volume of "
-                f"{section['daily_volume']} bytes (found {sorted(limits)})"
-            )
-
-
-NETWORK_CHECKS = {
-    "standard-sockets": check_standard_sockets,
-    "acl": check_acl,
-    "volume-limit": check_volume_limit,
-}
 
 
 def mqtt_address(app_name: str) -> tuple[str, int]:
@@ -932,8 +743,38 @@ def network_enabled_applications() -> list[str]:
     return applications
 
 
+NETWORK_POLICY_MARKER = "network-policy"
+
+
+def unenforced_network_limit(limit: str) -> str | None:
+    """Return why a network limit was not set up, or None if it was.
+
+    manage_package.py lists the limits it set up, acl and volume, in the
+    network-policy file of each application. A limit missing from that list
+    cannot be exercised, and the returned text becomes the skip reason.
+
+    Args:
+        limit: Network limit, acl or volume.
+    """
+    for app_name in network_enabled_applications():
+        marker = LXC_PATH / app_name / NETWORK_POLICY_MARKER
+        enforced = marker.read_text(encoding="utf-8").split() if marker.is_file() else []
+        if limit in enforced:
+            continue
+        if "acl" not in enforced:
+            return (
+                f"Neither nft nor iptables is available to set up the {app_name} network "
+                "policy, so its enforcement cannot be exercised."
+            )
+        return (
+            f"The kernel lacks nft or iptables quota support to set up the {app_name} "
+            "daily volumes, so their enforcement cannot be exercised."
+        )
+    return None
+
+
 def check_network(arguments: argparse.Namespace) -> None:
-    """Run the selected network check for each enabled application.
+    """Exercise the selected network limit of each enabled application.
 
     Args:
         arguments: Parsed command-line arguments for the network command.
@@ -942,10 +783,7 @@ def check_network(arguments: argparse.Namespace) -> None:
     if not applications:
         raise RuntimeError("no application manifest grants direct network access")
     for app_name in applications:
-        NETWORK_CHECKS[arguments.check](app_name)
-        exercise = NETWORK_EXERCISES.get(arguments.check)
-        if exercise:
-            exercise_limit(app_name, f"network {arguments.check}", exercise)
+        exercise_limit(app_name, f"network {arguments.check}", NETWORK_EXERCISES[arguments.check])
 
 
 # --------------------------------------------------------------------------- #
@@ -981,11 +819,16 @@ def parse_arguments() -> argparse.Namespace:
     launch.add_argument("application")
 
     network = commands.add_parser("network", help="check direct network policy")
-    network.add_argument("check", choices=tuple(NETWORK_CHECKS))
+    network.add_argument("check", choices=tuple(NETWORK_EXERCISES))
 
     commands.add_parser(
         "has-network-grant", help="succeed when a manifest grants direct network access"
     )
+    policy = commands.add_parser(
+        "has-network-policy",
+        help="succeed when the tests could set up a network limit, else tell why not",
+    )
+    policy.add_argument("limit", choices=("acl", "volume"))
     arguments = parser.parse_args()
     return arguments
 
@@ -996,6 +839,11 @@ def main() -> int:
     try:
         if arguments.command == "has-network-grant":
             return 0 if network_enabled_applications() else 1
+        if arguments.command == "has-network-policy":
+            reason = unenforced_network_limit(arguments.limit)
+            if reason:
+                print(reason)
+            return 1 if reason else 0
         if arguments.command == "cgroup":
             check_cgroup(arguments)
         elif arguments.command == "network":

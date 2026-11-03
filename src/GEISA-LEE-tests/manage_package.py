@@ -42,6 +42,8 @@ NETWORK_POLICY_QUOTA = "network_volume"
 MQTT_PASSWORD = "geisa-conformance"
 # Marks a broker client that install created, so uninstall only removes those.
 BROKER_CLIENT_MARKER = "broker-client"
+# Records the network limits that the installed policy enforces: acl, volume.
+NETWORK_POLICY_MARKER = "network-policy"
 # API topics that every application may use. "{}" stands for its userid.
 BROKER_BASE_ACLS = (
     ("publishClientSend", "geisa/api/platform/discovery/req/{}"),
@@ -579,53 +581,94 @@ def run_in_network_namespace(
     )
 
 
-def network_policy_rules(metadata: dict) -> str:
-    """Build the nftables rules that enforce an application's permitted network traffic.
+def network_policy_backend() -> str | None:
+    """Pick the firewall tool that enforces the network policy: nft, else iptables."""
+    for tool in ("nft", "iptables"):
+        if shutil.which(tool):
+            return tool
+    return None
+
+
+def section_quotas(metadata: dict) -> dict[str, int]:
+    """Map each granted section to its daily volume in bytes, keyed by quota name.
 
     Args:
         metadata: Validated application metadata constructed from its manifest.
     """
-    gateway = metadata["network_gateway"]
-    # The broker is always reachable and its traffic does not count in any daily volume.
-    output_lines = [
-        "        oifname \"lo\" accept",
-        f"        ip daddr {gateway} tcp dport {MQTT_BROKER_PORT} accept",
-    ]
-    input_lines = [
-        "        iifname \"lo\" accept",
-        f"        ip saddr {gateway} tcp sport {MQTT_BROKER_PORT} ct state established accept",
-    ]
-    quota_lines = []
+    return {
+        f"{NETWORK_POLICY_QUOTA}_{section['section']}": section["daily_volume_bytes"]
+        for section in metadata["network_sections"]
+    }
+
+
+def network_flows(metadata: dict):
+    """Yield one flow per granted permission and protocol.
+
+    A flow names the section quota, the protocol, the remote address and port,
+    and the chain through which the application opens it: output for an
+    outbound permission, input for an inbound one. The replies go through the
+    other chain.
+
+    Args:
+        metadata: Validated application metadata constructed from its manifest.
+    """
     for section in metadata["network_sections"]:
         quota = f"{NETWORK_POLICY_QUOTA}_{section['section']}"
-        quota_lines.append(f"    quota {quota} {{ over {section['daily_volume_bytes']} bytes }}")
         for direction in ("outbound", "inbound"):
             for permission in section[direction]:
                 transport = permission["transport"]
-                protocols = ("tcp", "udp") if transport is None else (transport,)
-                address = permission["address"]
-                family = "ip6" if ":" in address else "ip"
-                to_remote = f"{family} daddr {address} " if address else ""
-                from_remote = f"{family} saddr {address} " if address else ""
-                for protocol in protocols:
-                    # Outbound: the port is the remote one and the application
-                    # opens the connection. Inbound: the port is the
-                    # application's own and the remote side opens it.
-                    if direction == "outbound":
-                        opened = f"{to_remote}{protocol} dport {permission['port']}"
-                        replied = f"{from_remote}{protocol} sport {permission['port']}"
-                        opening, replying = output_lines, input_lines
-                    else:
-                        opened = f"{from_remote}{protocol} dport {permission['port']}"
-                        replied = f"{to_remote}{protocol} sport {permission['port']}"
-                        opening, replying = input_lines, output_lines
-                    opening.append(f"        {opened} quota name \"{quota}\" drop")
-                    opening.append(f"        {opened} accept")
-                    replying.append(f"        {replied} quota name \"{quota}\" drop")
-                    replying.append(f"        {replied} ct state established accept")
-    output_rules = "\n".join(output_lines)
-    input_rules = "\n".join(input_lines)
-    quotas = "".join(f"{line}\n" for line in quota_lines)
+                for protocol in ("tcp", "udp") if transport is None else (transport,):
+                    yield {
+                        "quota": quota,
+                        "protocol": protocol,
+                        "address": permission["address"],
+                        "port": permission["port"],
+                        "opening": "output" if direction == "outbound" else "input",
+                    }
+
+
+def network_policy_rules(metadata: dict, limit_volume: bool = True) -> str:
+    """Build the nftables rules that enforce an application's permitted network traffic.
+
+    Args:
+        metadata: Validated application metadata constructed from its manifest.
+        limit_volume: Whether to count the traffic against the daily volumes.
+    """
+    gateway = metadata["network_gateway"]
+    # The broker is always reachable and its traffic does not count in any daily volume.
+    lines = {
+        "output": [
+            "        oifname \"lo\" accept",
+            f"        ip daddr {gateway} tcp dport {MQTT_BROKER_PORT} accept",
+        ],
+        "input": [
+            "        iifname \"lo\" accept",
+            f"        ip saddr {gateway} tcp sport {MQTT_BROKER_PORT} ct state established accept",
+        ],
+    }
+    remote_field = {"output": "daddr", "input": "saddr"}
+    for flow in network_flows(metadata):
+        opening = flow["opening"]
+        replying = "input" if opening == "output" else "output"
+        address = flow["address"]
+        family = "ip6" if ":" in address else "ip"
+
+        def remote(chain: str) -> str:
+            return f"{family} {remote_field[chain]} {address} " if address else ""
+
+        opened = f"{remote(opening)}{flow['protocol']} dport {flow['port']}"
+        replied = f"{remote(replying)}{flow['protocol']} sport {flow['port']}"
+        if limit_volume:
+            lines[opening].append(f"        {opened} quota name \"{flow['quota']}\" drop")
+            lines[replying].append(f"        {replied} quota name \"{flow['quota']}\" drop")
+        lines[opening].append(f"        {opened} accept")
+        lines[replying].append(f"        {replied} ct state established accept")
+    output_rules = "\n".join(lines["output"])
+    input_rules = "\n".join(lines["input"])
+    quotas = "".join(
+        f"    quota {quota} {{ over {limit} bytes }}\n"
+        for quota, limit in (section_quotas(metadata) if limit_volume else {}).items()
+    )
     return f"""table inet {NETWORK_POLICY_TABLE} {{
 {quotas}    chain output {{
         type filter hook output priority 0; policy drop;
@@ -639,53 +682,131 @@ def network_policy_rules(metadata: dict) -> str:
 """
 
 
-def network_quota_supported(name: str) -> bool:
-    """Probe whether the container kernel supports nftables byte quotas.
+def iptables_policy_rules(metadata: dict, limit_volume: bool = True) -> str:
+    """Build the iptables-restore rules that enforce an application's permitted network traffic.
+
+    The rules mirror the nftables ones for IPv4. A quota match counts per rule,
+    so each section gets a chain that holds its single counter, and every rule
+    of the section jumps to it.
+
+    Args:
+        metadata: Validated application metadata constructed from its manifest.
+        limit_volume: Whether to count the traffic against the daily volumes.
+    """
+    gateway = metadata["network_gateway"]
+    established = "-m conntrack --ctstate ESTABLISHED"
+    chains = {
+        "OUTPUT": ["-o lo -j ACCEPT", f"-d {gateway} -p tcp --dport {MQTT_BROKER_PORT} -j ACCEPT"],
+        "INPUT": ["-i lo -j ACCEPT", f"-s {gateway} -p tcp --sport {MQTT_BROKER_PORT} {established} -j ACCEPT"],
+    }
+    remote_option = {"OUTPUT": "-d", "INPUT": "-s"}
+    for flow in network_flows(metadata):
+        address = flow["address"]
+        if ":" in address:
+            raise RuntimeError("iptables only enforces IPv4 network permissions")
+        opening = flow["opening"].upper()
+        replying = "INPUT" if opening == "OUTPUT" else "OUTPUT"
+
+        def remote(chain: str) -> str:
+            return f"{remote_option[chain]} {address} " if address else ""
+
+        target = flow["quota"] if limit_volume else "ACCEPT"
+        chains[opening].append(
+            f"{remote(opening)}-p {flow['protocol']} --dport {flow['port']} -j {target}"
+        )
+        chains[replying].append(
+            f"{remote(replying)}-p {flow['protocol']} --sport {flow['port']} {established} -j {target}"
+        )
+    quotas = section_quotas(metadata) if limit_volume else {}
+    lines = ["*filter", ":INPUT DROP [0:0]", ":FORWARD DROP [0:0]", ":OUTPUT DROP [0:0]"]
+    lines.extend(f":{quota} - [0:0]" for quota in quotas)
+    for quota, limit in quotas.items():
+        lines.append(f"-A {quota} -m quota --quota {limit} -j ACCEPT")
+        lines.append(f"-A {quota} -j DROP")
+    for chain, rules in chains.items():
+        lines.extend(f"-A {chain} {rule}" for rule in rules)
+    lines.append("COMMIT")
+    return "\n".join(lines) + "\n"
+
+
+def network_quota_supported(name: str, backend: str) -> bool:
+    """Probe whether the container kernel supports byte quotas with the given backend.
 
     Args:
         name: Installed application name.
+        backend: Firewall tool, nft or iptables.
     """
-    probe_table = f"{NETWORK_POLICY_TABLE}_probe"
-    probe = (
-        f"add table inet {probe_table}\n"
-        f"add quota inet {probe_table} {NETWORK_POLICY_QUOTA} {{ over 1 bytes }}\n"
-    )
-    result = run_in_network_namespace(
-        name, "nft", "-f", "-", input_text=probe, check=False
-    )
-    run_in_network_namespace(
-        name, "nft", "delete", "table", "inet", probe_table, check=False
-    )
+    probe_name = f"{NETWORK_POLICY_TABLE}_probe"
+    if backend == "nft":
+        probe = (
+            f"add table inet {probe_name}\n"
+            f"add quota inet {probe_name} {NETWORK_POLICY_QUOTA} {{ over 1 bytes }}\n"
+        )
+        result = run_in_network_namespace(name, "nft", "-f", "-", input_text=probe, check=False)
+        run_in_network_namespace(name, "nft", "delete", "table", "inet", probe_name, check=False)
+    else:
+        probe = f"*filter\n:{probe_name} - [0:0]\n-A {probe_name} -m quota --quota 1 -j ACCEPT\nCOMMIT\n"
+        result = run_in_network_namespace(
+            name, "iptables-restore", "-w", "-n", input_text=probe, check=False
+        )
+        run_in_network_namespace(name, "iptables", "-w", "-F", probe_name, check=False)
+        run_in_network_namespace(name, "iptables", "-w", "-X", probe_name, check=False)
     return result.returncode == 0
 
 
 def install_network_policy(metadata: dict) -> None:
-    """Replace the application's active nftables policy with its manifest-derived policy.
+    """Install the network policy from the application's manifest with nft, or iptables.
+
+    If neither tool is installed, the network stays open. If the kernel
+    cannot count bytes, the daily volumes are not limited. Both cases print
+    a warning, and the network-policy file lists the limits that are in
+    place so the tests only exercise those.
 
     Args:
         metadata: Validated application metadata constructed from its manifest.
     """
     name = metadata["name"]
-    if metadata["network_sections"] and not network_quota_supported(name):
-        raise RuntimeError(
-            "the kernel lacks nftables quota support (CONFIG_NFT_QUOTA)"
+    backend = network_policy_backend()
+    enforced = []
+    if backend is None:
+        print(
+            f"manage_package: warning: neither nft nor iptables is available, "
+            f"{name} network is not restricted",
+            file=sys.stderr,
         )
-    existing = run_in_network_namespace(
-        name,
-        "nft",
-        "list",
-        "table",
-        "inet",
-        NETWORK_POLICY_TABLE,
-        check=False,
-    )
-    if existing.returncode == 0:
-        run_in_network_namespace(
-            name, "nft", "delete", "table", "inet", NETWORK_POLICY_TABLE
+    else:
+        enforced.append("acl")
+        limit_volume = not metadata["network_sections"] or network_quota_supported(
+            name, backend
         )
-    run_in_network_namespace(
-        name, "nft", "-f", "-", input_text=network_policy_rules(metadata)
-    )
+        if limit_volume:
+            enforced.append("volume")
+        else:
+            print(
+                f"manage_package: warning: the kernel lacks {backend} quota support, "
+                f"{name} daily volumes are not limited",
+                file=sys.stderr,
+            )
+        if backend == "iptables":
+            # iptables-restore replaces the whole filter table of the namespace.
+            run_in_network_namespace(
+                name,
+                "iptables-restore",
+                "-w",
+                input_text=iptables_policy_rules(metadata, limit_volume),
+            )
+        else:
+            existing = run_in_network_namespace(
+                name, "nft", "list", "table", "inet", NETWORK_POLICY_TABLE, check=False
+            )
+            if existing.returncode == 0:
+                run_in_network_namespace(
+                    name, "nft", "delete", "table", "inet", NETWORK_POLICY_TABLE
+                )
+            run_in_network_namespace(
+                name, "nft", "-f", "-", input_text=network_policy_rules(metadata, limit_volume)
+            )
+    (app_directory(name) / NETWORK_POLICY_MARKER).write_text(" ".join(enforced) + "\n")
 
 
 def broker_dynsec(*arguments: str, check: bool = True) -> str:

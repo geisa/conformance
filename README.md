@@ -5,7 +5,7 @@
 
 # GEISA Conformance - a GEISA validation framework
 
-GEISA conformance is designed to help developers to validate the conformance
+GEISA conformance is designed to help developers validate their conformance
 with the [GEISA Specification](https://github.com/geisa/specification).
 
 The GEISA Specification is an effort by the Grid Edge Interoperability and Security Alliance to define a consistent, secure, and interoperable computing environment for embedded devices at the very edge of the electric utility grid, like electric meters and distribution automation devices, for the benefit of utilities, platform vendors, and software vendors.  If you would like to get involved, please head over to our Wiki page for details on participation (https://lfenergy.org/projects/geisa/).  Follow the onboarding link for details about participating in our community process.
@@ -16,39 +16,45 @@ The GEISA Specification is an effort by the Grid Edge Interoperability and Secur
 
 #### Requirements
 
-The automatic test launcher requires the following requirements:
+The automatic test launcher has the following requirements:
 * On the target:
   * With ssh:
-     - Board with a connexion to the network
+     - Board with a connection to the network
      - SSH access to the board
   * With serial:
      - Serial connection to the board
      - lrzsz package
+  * For the network tests, when the application is granted network access:
+     - nftables, or iptables if nftables is not installed. Without either, the
+       network access control list and daily volume tests are skipped.
+     - Kernel support for byte quotas: `CONFIG_NFT_QUOTA` with nftables, or
+       `CONFIG_NETFILTER_XT_MATCH_QUOTA` with iptables. Without it, the daily
+       volume test is skipped.
 * On the host:
   * With ssh: OpenSSH client uses the default SSH key first. sshpass is required when no usable key is found and password authentication is needed (On Ubuntu, install with `sudo apt install sshpass`)
   * With serial:
-     - python3 (On ubuntu, install with `sudo apt install python3`)
-     - pyserial (On ubuntu, install with `sudo apt install python3-serial`)
-     - pexpect (On ubuntu, install with `sudo apt install python3-pexpect`)
-     - lrzsz (On ubuntu, install with `sudo apt install lrzsz`)
+     - python3 (On Ubuntu, install with `sudo apt install python3`)
+     - pyserial (On Ubuntu, install with `sudo apt install python3-serial`)
+     - pexpect (On Ubuntu, install with `sudo apt install python3-pexpect`)
+     - lrzsz (On Ubuntu, install with `sudo apt install lrzsz`)
   * For report generation:
-    - python3 (On ubuntu, install with `sudo apt install python3`)
-    - python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
-    - asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
+    - python3 (On Ubuntu, install with `sudo apt install python3`)
+    - python3-junitparser (On Ubuntu, install with `sudo apt install python3-junitparser`)
+    - asciidoctor-pdf (On Ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
   * For api tests:
-    - podman (On ubuntu, install with `sudo apt install podman`)
-    - qemu-user-static (On ubuntu, install with `sudo apt install qemu-user-static`)
-    - mksquashfs (On ubuntu, install with `sudo apt install squashfs-tools`)
-    - launch_gapi_test_app.sh script see [API Launching script](#api-launching-script) section
+    - podman (On Ubuntu, install with `sudo apt install podman`)
+    - qemu-user-static (On Ubuntu, install with `sudo apt install qemu-user-static`)
+    - mksquashfs (On Ubuntu, install with `sudo apt install squashfs-tools`)
+    - launch_gapi_test_app.sh script, see the [API Launching script](#api-launching-script) section
   * For adm tests:
-    - bsdmainutils (On ubuntu, install with `sudo apt install bsdmainutils`)
-    - curl (On ubuntu, install with `sudo apt install curl`)
-    - default-jre-headless (On ubuntu, install with `sudo apt install default-jre-headless`)
-    - wget (On ubuntu, install with `sudo apt install wget`)
+    - bsdmainutils (On Ubuntu, install with `sudo apt install bsdmainutils`)
+    - curl (On Ubuntu, install with `sudo apt install curl`)
+    - default-jre-headless (On Ubuntu, install with `sudo apt install default-jre-headless`)
+    - wget (On Ubuntu, install with `sudo apt install wget`)
 
-A docker support is also available to launch the tests with a container, it requires:
-  - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
-  - qemu-user-static to build the container for cross-compilation (On ubuntu, install with `sudo apt install qemu-user-static`)
+Docker support is also available to launch the tests in a container. It requires:
+  - cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on GitHub)
+  - qemu-user-static to build the container for cross-compilation (On Ubuntu, install with `sudo apt install qemu-user-static`)
 
 #### Launch tests
 
@@ -73,14 +79,14 @@ Optional options:
 * `--password <password>`: Password fallback used only when SSH key authentication fails
 * `--key-name <name>`: Optional SSH private key file name. Without it, standard OpenSSH key locations and agents are used
 * `--key-path <dir>`: Directory holding the key given by `--key-name` (default: `~/.ssh`)
-* `--no-reports` : Do not generate test reports (only run tests and display results)
+* `--no-reports`: Do not generate test reports (only run tests and display results)
 * `--no-reboot`: Do not reset the board, skipping the tests that require a reboot
 * `--baudrate <baudrate>`: The baudrate for the serial port of the board (default: 115200)
 * `--no-glee-tests`: Do not run GEISA Linux Execution Environment Conformance tests
 * `--no-gadm-tests`: Do not run GEISA Application & Device Management Conformance tests
 * `--no-gapi-tests`: Do not run GEISA Application Programming Interface Conformance tests
 * `--clean-up`: Clean artifacts for the selected test suites and exit. Use the `--no-<glee|gadm|gapi>-tests` options to exclude corresponding suites
-* `--help`: display help message
+* `--help`: Display the help message
 
 The LEE tests are configured in `src/GEISA-LEE-tests/user_configuration.conf`,
 which is read by both the host launcher and the target. Edit it before launching
@@ -117,20 +123,21 @@ GADM test options (optional):
 Environment variables can also be used to configure the script:
 * `CONFORMANCE_SCP_ARGS`: Additional arguments for the `scp` command
 * `CONFORMANCE_SSH_ARGS`: Additional arguments for the `ssh` command
-* `GLEE_TESTS`: Specify the list of GEISA LEE tests name to run (default: all tests)
+* `GLEE_TESTS`: Specify the list of GEISA LEE test names to run (default: all tests)
 
 SSH and SCP first use normal OpenSSH key authentication, including configured
 identities and agents. If key authentication fails and `--password` was given,
 the launcher retries with `sshpass`.
 
-The tests names correspond to a part of the filename.
+The test names correspond to a part of the filename.
 Example: `GLEE_TESTS="operating_system app_isolation"` will run only the `operating_system` and `app_isolation` tests.
 
 Some conformance tests only make sense once the device has been reset. Each
-pillar groups them in its own `reboot.conf` suite (if there is any), which the launcher keeps off the board until it has actually reset it. The other suites therefore run and
-report first.
+pillar groups them in its own `reboot.conf` suite (if there is any), which the
+launcher keeps off the board until it has actually reset it. The other suites
+therefore run and report first.
 
-A xml and pdf report will be generated in the `reports` directory.
+An XML and a PDF report are generated in the `reports` directory.
 
 For ADM tests, if your software package is outside the project directory, you may want to mount its directory in the container by setting the `CQFD_EXTRA_RUN_ARGS` environment variable before running tests. For example:
 
@@ -138,7 +145,7 @@ For ADM tests, if your software package is outside the project directory, you ma
 export CQFD_EXTRA_RUN_ARGS="-v path/to/package:path/to/package"
 ```
 
-To use the docker support run with the following commands:
+To use the Docker support, run the following commands:
 ```bash
 $ cqfd init
 $ cqfd run ./launch_conformance_tests.sh --ip <board_ip> [options]
@@ -150,15 +157,16 @@ $ cqfd run ./launch_conformance_tests.sh --serial <serial_port> [options]
 
 #### Requirements
 
-The manual launch is requiring some dependencies to generate the report on the host:
-* python3 (On ubuntu, install with `sudo apt install python3`)
-* python3-junitparser (On ubuntu, install with `sudo apt install python3-junitparser`)
-* asciidoctor-pdf (On ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
+The manual launch requires the following dependencies to generate the report on the host:
+* python3 (On Ubuntu, install with `sudo apt install python3`)
+* python3-junitparser (On Ubuntu, install with `sudo apt install python3-junitparser`)
+* asciidoctor-pdf (On Ubuntu, install with `sudo apt install ruby-asciidoctor-pdf`)
 
-A docker support is also available to generate the report on the host, it requires:
-* cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on github)
+Docker support is also available to generate the report on the host. It requires:
+* cqfd (See [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) steps on GitHub)
 
-For the tests to run, you need to have the following requirements on the target:
+On the target, the tests have the same requirements as with the
+[automatic launcher](#requirements), apart from the connection to the host.
 
 #### Launch tests
 
@@ -169,7 +177,7 @@ Then on the target, you can run the tests with the following command:
 ```bash
 $ /tmp/conformance_tests/cukinia/cukinia -f junitxml -o geisa-lee-conformance-report.xml /tmp/conformance_tests/GEISA-LEE-tests/cukinia.conf
 ```
-This will generate a `geisa-lee-conformance-report.xml` file in the current directory. This file will be used to generated the PDF report.
+This will generate a `geisa-lee-conformance-report.xml` file in the current directory. This file is used to generate the PDF report.
 If you only want to run the tests without generating the report, you can run the following command:
 
 ```bash
@@ -187,7 +195,7 @@ cd /path/to/conformance/src/test-report-pdf
 
 This will generate a PDF report in the current directory named `test-report.pdf`.
 
-or you can use the docker support to generate the report on the host with the following commands:
+Or you can use the Docker support to generate the report on the host with the following commands:
 
 ```bash
 $ cd /path/to/conformance/
@@ -216,17 +224,17 @@ $ git submodule update --init
 
 ## Testing
 
-Static test is provided to validate the code of conformance tests.
+Static tests are provided to validate the code of the conformance tests.
 
 ### Run the test via CQFD
 
 #### Requirements
 
-Install cqfd, see [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) on github
+Install cqfd, see [requirements](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#requirements) and [installation](https://github.com/savoirfairelinux/cqfd?tab=readme-ov-file#installingremoving-cqfd) on GitHub
 
 #### Run the test
 
-Run the following command to execute the static test:
+Run the following commands to execute the static tests:
 
 ```bash
 $ cqfd init
@@ -237,19 +245,19 @@ $ cqfd run
 
 #### Requirements
 
-The following requirements are needed to run the static test manually:
-* shellcheck (On ubuntu, install with `sudo apt install shellcheck`)
-* pylint (On ubuntu, install with `sudo apt install pylint`)
-* black (On ubuntu, install with `sudo apt install black`)
-* clang-format (On ubuntu, install with `sudo apt install clang-format`)
-* clang-tidy (On ubuntu, install with `sudo apt install clang-tidy`)
+The following requirements are needed to run the static tests manually:
+* shellcheck (On Ubuntu, install with `sudo apt install shellcheck`)
+* pylint (On Ubuntu, install with `sudo apt install pylint`)
+* black (On Ubuntu, install with `sudo apt install black`)
+* clang-format (On Ubuntu, install with `sudo apt install clang-format`)
+* clang-tidy (On Ubuntu, install with `sudo apt install clang-tidy`)
 
 #### Run the test
 
-Run the following command to execute the static test:
+Run the following commands to execute the static tests:
 
 ```bash
-$ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/cukinia-tests/tests.d/*.sh
+$ shellcheck -xo all launch_conformance_tests.sh src/*.sh src/GEISA-LEE-tests/tests.d/*.sh tests/*.sh
 $ pylint src/launch_glee_conformance_tests_serial.py
 $ black --check --diff src/launch_glee_conformance_tests_serial.py
 $ clang-format --Werror --dry-run src/GEISA-API-tests/src/*.c src/GEISA-API-tests/src/*.h
@@ -261,9 +269,9 @@ $ rm -rf src/GEISA-API-tests/src/build
 ## CI
 
 The CI is configured to run static tests (shellcheck, pylint, black, clang-format,
-clang-tidy) and on target tests on each push.
+clang-tidy) and on-target tests on each push.
 
-If you want to add a new target in the CI, add your runner in github settings
+If you want to add a new target in the CI, add your runner in GitHub settings
 with a label corresponding to the target and modify
 .github/workflows/ci-conformance-on-target.yml:
 
@@ -280,14 +288,14 @@ on-target-tests-ssh-<target_name>:
     needs:
         - on-target-tests-approval
 ```
-with :
+with:
 * `<target_name>` being the name of your target (corresponding to the label
 you configured).
 * `<target_user>` being the user to connect to the target (optional, default: root).
 * `<target_ip_secret>` being the name of the secret containing the IP address
 of your target.
 * `<target_ip_password>` being the name of the secret containing the password
-of your target. (optional, if not provided, no password will be used for the SSH connection)
+of your target (optional; if not provided, no password is used for the SSH connection).
 
 * To add serial tests add the following code snippet in the `jobs` section:
 ```
@@ -304,20 +312,20 @@ on-target-tests-serial-<target_name>:
         - on-target-tests-approval
         - on-target-tests-ssh-<target_name>
 ```
-with :
+with:
 * `<target_name>` being the name of your target (corresponding to the label
 you configured).
 * `<target_user>` being the user to connect to the target (optional, default: root).
 * `<target_tty>` being the serial port of your target (e.g. /dev/ttyUSB0).
-* `<target_baudrate>` being the baudrate of your target (optional, default: 115200)
+* `<target_baudrate>` being the baudrate of your target (optional, default: 115200).
 * `<target_ip_password>` being the name of the secret containing the password
-of your target. (optional, if not provided, no password will be used for the serial connection)
+of your target (optional; if not provided, no password is used for the serial connection).
 
 ### On-target tests approval
 
 For security reasons, the on-target tests are not automatically executed on each
 push. A manual approval by a maintainer is required to run the tests.
-Exception is made for main branch, where the tests are automatically executed on
+An exception is made for the main branch, where the tests are automatically executed on
 each push.
 
 ## API Launching script

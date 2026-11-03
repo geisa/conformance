@@ -25,6 +25,22 @@ source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh
 source "${TOPDIR}"/src/launch_gapi_conformance_tests.sh
 source "${TOPDIR}"/src/launch_gadm_conformance_tests.sh
 
+# Print the details the specification relies on. The board script is copied
+# over scp and run with sh, so the board needs nothing but a shell.
+print_platform_details() {
+	local board_ip="${BOARD_IP}" board_user="${BOARD_USER}" board_password="${BOARD_PASSWORD}" details
+	SCP "${TOPDIR}/src/platform-details.sh" \
+		"${board_user}@[${board_ip}]:/tmp/platform-details.sh" 1>/dev/null 2>&1 &&
+		details="$(SSH "sh /tmp/platform-details.sh")"
+	details="${details//$'\r'/}"
+	if [[ -z ${details} ]]; then
+		echo -e "${ORANGE}Warning:${ENDCOLOR} Failed to read the platform details"
+		return
+	fi
+	echo "Platform details:"
+	echo "  ${details//$'\n'/$'\n'  }"
+}
+
 trap '
 	echo -e "${RED}Error:${ENDCOLOR} Test run interrupted."
 	echo -e "${ORANGE}Warning:${ENDCOLOR} Test artifacts may still be installed on the board."
@@ -273,6 +289,11 @@ if ! ${NO_REPORTS}; then
 	rm -rf "${TOPDIR}"/reports/*
 fi
 
+# Over serial, the serial launcher prints them after login.
+if [[ -n ${BOARD_IP} ]]; then
+	print_platform_details
+fi
+
 if [[ -z ${NO_GLEE_TESTS} ]]; then
 	if [[ -n ${BOARD_IP} ]]; then
 		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
@@ -354,7 +375,8 @@ if ! ${NO_REPORTS}; then
 		-c "${TOPDIR}"/src/GEISA-LEE-tests/GEISA-LEE-matrix.csv \
 		-c "${TOPDIR}"/src/GEISA-API-tests/GEISA-API-matrix.csv \
 		--allow_absent \
-		--show_failed_cdata && \
+		--show_failed_cdata \
+		--show_skip_reasons && \
 	mv "${TOPDIR}"/src/test-report-pdf/test-report.pdf "${TOPDIR}"/reports/geisa-conformance-report.pdf || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create PDF report"
 		exit 1
