@@ -122,7 +122,7 @@ connect_and_transfer_with_ssh() {
 	echo "Starting GEISA Linux Execution Environment Conformance Tests on board at ${board_ip}"
 	if ! ping -c 1 -W 2 "${board_ip}" >/dev/null 2>&1; then
 		echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${board_ip}"
-		exit 1
+		exit 2
 	fi
 
 	echo "Connecting to board as user '${board_user}'"
@@ -131,37 +131,37 @@ connect_and_transfer_with_ssh() {
 	echo "Cleaning previous test results on board"
 	SSH "rm -rf /tmp/conformance_tests" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous test results on board"
-		exit 1
+		exit 2
 	}
 
 	echo ""
 	echo "Copying LEE runtime files to board"
 	runtime_archive="$(mktemp)" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create local LEE runtime archive"
-		exit 1
+		exit 2
 	}
 	tar -C "${topdir}/src" "${tar_excludes[@]}" \
 		-czf "${runtime_archive}" cukinia GEISA-LEE-tests || {
 		rm -f "${runtime_archive}"
 		echo -e "${RED}Error:${ENDCOLOR} Failed to archive LEE runtime files"
-		exit 1
+		exit 2
 	}
 	SSH "mkdir -p /tmp/conformance_tests" || {
 		rm -f "${runtime_archive}"
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create LEE runtime directory on board"
-		exit 1
+		exit 2
 	}
 	SCP "${runtime_archive}" \
 		"${board_user}@[${board_ip}]:/tmp/conformance_tests/lee-runtime.tar.gz" 1>/dev/null || {
 		rm -f "${runtime_archive}"
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy LEE runtime files to board"
-		exit 1
+		exit 2
 	}
 	SSH "tar -C /tmp/conformance_tests -xzf /tmp/conformance_tests/lee-runtime.tar.gz && \
 		rm /tmp/conformance_tests/lee-runtime.tar.gz" || {
 		rm -f "${runtime_archive}"
 		echo -e "${RED}Error:${ENDCOLOR} Failed to extract LEE runtime files on board"
-		exit 1
+		exit 2
 	}
 	rm -f "${runtime_archive}"
 }
@@ -181,7 +181,7 @@ provision_glee_apps_with_ssh() {
 
 	for app_name in ${APPLICATIONS}; do
 		if [[ "${app_name}" == "${REFERENCE_APPLICATION_NAME}" ]]; then
-			provision_reference_application "${board_ip}" "${board_user}" "${board_password}" "${topdir}" "${target_arch}" "${app_name}" || exit 1
+			provision_reference_application "${board_ip}" "${board_user}" "${board_password}" "${topdir}" "${target_arch}" "${app_name}" || exit 2
 		fi
 	done
 }
@@ -318,6 +318,7 @@ launch_glee_tests_with_report_ssh() {
 	local board_password="$3"
 	local topdir="$4"
 	local remote_dir=/tmp/conformance_tests/GEISA-LEE-tests
+	local reboot_test_exit_code
 
 	echo ""
 	echo "Launching tests..."
@@ -329,25 +330,28 @@ launch_glee_tests_with_report_ssh() {
 	mkdir -p "${topdir}"/reports
 	SCP "${board_user}@[${board_ip}]:${remote_dir}/geisa-lee-conformance-report.xml" "${topdir}"/reports 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test report from board"
-		exit 1
+		exit 2
 	}
 
 	if ! ${NO_REBOOT}; then
 		if prepare_glee_reboot_with_ssh "${board_ip}" "${board_user}" "${board_password}" "${topdir}"; then
 			echo ""
 			echo "Launching reboot tests..."
-			SSH "GLEE_TESTS=\"reboot\" REBOOT_PERSISTENCE_MARKER=\"${REBOOT_PERSISTENCE_MARKER}\" /tmp/conformance_tests/cukinia/cukinia -f junitxml -o ${remote_dir}/geisa-lee-reboot-conformance-report.xml ${remote_dir}/cukinia.conf" ||
-				lee_test_exit_code=1
+			SSH "GLEE_TESTS=\"reboot\" REBOOT_PERSISTENCE_MARKER=\"${REBOOT_PERSISTENCE_MARKER}\" /tmp/conformance_tests/cukinia/cukinia -f junitxml -o ${remote_dir}/geisa-lee-reboot-conformance-report.xml ${remote_dir}/cukinia.conf"
+			reboot_test_exit_code=$?
+			if [[ ${reboot_test_exit_code} -gt ${lee_test_exit_code} ]]; then
+				lee_test_exit_code="${reboot_test_exit_code}"
+			fi
 
 			echo ""
 			echo "Copying reboot tests report on host"
 			SCP "${board_user}@[${board_ip}]:${remote_dir}/geisa-lee-reboot-conformance-report.xml" "${topdir}"/reports 1>/dev/null || {
 				echo -e "${RED}Error:${ENDCOLOR} Failed to copy reboot test report from board"
-				exit 1
+				exit 2
 			}
 		else
 			echo -e "${RED}Error:${ENDCOLOR} Reboot tests could not run"
-			lee_test_exit_code=1
+			lee_test_exit_code=2
 		fi
 	fi
 
@@ -360,6 +364,7 @@ launch_glee_tests_without_report_ssh() {
 	local board_password="$3"
 	local topdir="$4"
 	local remote_dir=/tmp/conformance_tests/GEISA-LEE-tests
+	local reboot_test_exit_code
 
 	echo ""
 	echo "Launching tests..."
@@ -370,11 +375,14 @@ launch_glee_tests_without_report_ssh() {
 		if prepare_glee_reboot_with_ssh "${board_ip}" "${board_user}" "${board_password}" "${topdir}"; then
 			echo ""
 			echo "Launching reboot tests..."
-			SSH "GLEE_TESTS=\"reboot\" REBOOT_PERSISTENCE_MARKER=\"${REBOOT_PERSISTENCE_MARKER}\" /tmp/conformance_tests/cukinia/cukinia ${remote_dir}/cukinia.conf" ||
-				lee_test_exit_code=1
+			SSH "GLEE_TESTS=\"reboot\" REBOOT_PERSISTENCE_MARKER=\"${REBOOT_PERSISTENCE_MARKER}\" /tmp/conformance_tests/cukinia/cukinia ${remote_dir}/cukinia.conf"
+			reboot_test_exit_code=$?
+			if [[ ${reboot_test_exit_code} -gt ${lee_test_exit_code} ]]; then
+				lee_test_exit_code="${reboot_test_exit_code}"
+			fi
 		else
 			echo -e "${RED}Error:${ENDCOLOR} Reboot tests could not run"
-			lee_test_exit_code=1
+			lee_test_exit_code=2
 		fi
 	fi
 

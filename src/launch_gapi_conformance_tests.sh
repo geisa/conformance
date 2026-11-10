@@ -53,17 +53,17 @@ transfer_launch_gapi_tests_script() {
 
 	if [[ ! -f "${topdir}"/launch_gapi_test_app.sh ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} No API launching script found. Create a launch_gapi_test_app.sh script (see launch_gapi_test_app.sh.template or read the README)"
-		exit 1
+		exit 2
 	fi
 
 	SSH "mkdir -p /tmp/GAPI-tests" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create test directory on board"
-		exit 1
+		exit 2
 	}
 
 	SCP "${topdir}"/launch_gapi_test_app.sh "${board_user}@[${board_ip}]:/tmp/GAPI-tests/launch_gapi_test_app.sh" 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
-		exit 1
+		exit 2
 	}
 }
 
@@ -87,17 +87,17 @@ create_gapi_test_squashfs() {
 	cp "${topdir}"/src/cukinia/cukinia "${topdir}"/src/GEISA-API-tests/build_rootfs/etc/cukinia/cukinia &&
 	cp "${topdir}"/src/GEISA-API-tests/gapi-conformance-tests "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin/gapi-conformance-tests || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy configuration files for API tests"
-		exit 1
+		exit 2
 	}
 
 	podman build -t gapi-conformance-tests:latest --arch arm64 \
 		-f "${topdir}"/src/GEISA-API-tests/Dockerfile "${topdir}"/src || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to build API test container"
-		exit 1
+		exit 2
 	}
 	podman create --replace --name gapi-conformance-tests-container gapi-conformance-tests:latest || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create API test container"
-		exit 1
+		exit 2
 	}
 	# shellcheck disable=SC2015
 	podman cp gapi-conformance-tests-container:/usr/local/bin/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/bin &&
@@ -106,12 +106,12 @@ create_gapi_test_squashfs() {
 	podman cp gapi-conformance-tests-container:/usr/local/usr/lib/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib &&
 	podman cp gapi-conformance-tests-container:/usr/local/lib/. "${topdir}"/src/GEISA-API-tests/build_rootfs/usr/lib || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy API test container artifacts"
-		exit 1
+		exit 2
 	}
 
 	mksquashfs "${topdir}"/src/GEISA-API-tests/build_rootfs "${topdir}"/gapi-conformance-tests.squashfs -noappend -quiet || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create squashfs for API tests"
-		exit 1
+		exit 2
 	}
 }
 
@@ -125,7 +125,7 @@ connect_and_transfer_gapi_with_ssh() {
 	echo "Starting GEISA API Conformance Tests on board at ${board_ip}"
 	if ! ping -c 1 -W 2 "${board_ip}" >/dev/null 2>&1; then
 		echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${board_ip}"
-		exit 1
+		exit 2
 	fi
 
 	echo "Connecting to board as user '${board_user}'"
@@ -136,13 +136,13 @@ connect_and_transfer_gapi_with_ssh() {
 
 	SSH mkdir -p /tmp/GAPI-tests/{upper,work,base,app,rootfs} || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create test directory on board"
-		exit 1
+		exit 2
 	}
 
 	echo "Transferring test squashfs to board"
 	SCP "${topdir}"/gapi-conformance-tests.squashfs "${board_user}@[${board_ip}]:/tmp/GAPI-tests" 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to copy test files to board"
-		exit 1
+		exit 2
 	}
 
 }
@@ -158,7 +158,7 @@ launch_gapi_tests_with_report() {
 
 	transfer_launch_gapi_tests_script "${board_ip}" "${board_user}" "${board_password}" "${topdir}" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
-		exit 1
+		exit 2
 	}
 
 	SSH "chmod +x /tmp/GAPI-tests/launch_gapi_test_app.sh && /tmp/GAPI-tests/launch_gapi_test_app.sh report"
@@ -169,7 +169,7 @@ launch_gapi_tests_with_report() {
 	mkdir -p "${topdir}"/reports
 	SCP "${board_user}@[${board_ip}]:/tmp/GAPI-tests/rootfs/geisa-api-conformance-report.xml" "${topdir}"/reports/ 1>/dev/null || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to retrieve test reports from board"
-		exit 1
+		exit 2
 	}
 	export api_test_exit_code
 }
@@ -185,7 +185,7 @@ launch_gapi_tests_without_report() {
 
 	transfer_launch_gapi_tests_script "${board_ip}" "${board_user}" "${board_password}" "${topdir}" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
-		exit 1
+		exit 2
 	}
 
 	SSH "chmod +x /tmp/GAPI-tests/launch_gapi_test_app.sh && /tmp/GAPI-tests/launch_gapi_test_app.sh no-report"
@@ -205,16 +205,16 @@ cleanup_api_ssh() {
 
 	transfer_launch_gapi_tests_script "${board_ip}" "${board_user}" "${board_password}" "${topdir}" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to transfer API test launch script to board"
-		exit 1
+		exit 2
 	}
 
 	SSH "chmod +x /tmp/GAPI-tests/launch_gapi_test_app.sh && /tmp/GAPI-tests/launch_gapi_test_app.sh clean" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
-		exit 1
+		exit 2
 	}
 
 	SSH "rm -rf /tmp/GAPI-tests" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up test files on board"
-		exit 1
+		exit 2
 	}
 }
