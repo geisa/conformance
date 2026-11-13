@@ -3,19 +3,19 @@
 configure_and_activate_app() {
     mkdir -p /platform/apps/gapi-conformance-tests/ || {
         echo >&2 -e "Error: Failed to create app directory on board"
-        exit 1
+        exit 2
     }
     cp /tmp/GAPI-tests/gapi-conformance-tests.squashfs /platform/apps/gapi-conformance-tests/gapi-conformance-tests-0.1.squashfs || {
         echo >&2 -e "Error: Failed to copy app to app directory"
-        exit 1
+        exit 2
     }
     /usr/sbin/manage_package.sh install gapi-conformance-tests 0.1 gapi-conformance-tests 1000 1000 || {
         echo >&2 -e "Error: Failed to install app on board"
-        exit 1
+        exit 2
     }
     /usr/sbin/manage_package.sh activate gapi-conformance-tests || {
         echo >&2 -e "Error: Failed to activate app on board"
-        exit 1
+        exit 2
     }
 }
 
@@ -24,8 +24,13 @@ launch_app_with_report() {
 
     lxc-execute -P /platform/lxc -n gapi-conformance-tests --share-net 1 \
     -- /etc/cukinia/cukinia -f junitxml -o /geisa-api-conformance-report.xml /etc/GEISA-API-tests/cukinia.conf
+    test_status=$?
 
-    cp /platform/lxc/gapi-conformance-tests/rootfs/geisa-api-conformance-report.xml /tmp/GAPI-tests/rootfs/geisa-api-conformance-report.xml
+    cp /platform/lxc/gapi-conformance-tests/rootfs/geisa-api-conformance-report.xml /tmp/GAPI-tests/rootfs/geisa-api-conformance-report.xml || {
+        echo >&2 -e "Error: Failed to copy API test report"
+        exit 2
+    }
+    return "${test_status}"
 }
 
 launch_app_without_report() {
@@ -56,6 +61,6 @@ case "$1" in
         ;;
     *)
         echo "Unknown argument: $1"
-        exit 1
+        exit 2
         ;;
 esac

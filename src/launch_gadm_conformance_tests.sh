@@ -81,7 +81,7 @@ EOF
 	chmod +x "${bin_dir}/geisa-app-1"
 	mksquashfs "${rootfs_dir}" "${package_path}" -noappend -quiet > /dev/null 2>&1 || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create squashfs for ADM client package"
-		exit 1
+		exit 2
 	}
 	rm -rf "${rootfs_dir}"
 
@@ -123,7 +123,7 @@ wait_for_gadm_server() {
 	done
 
 	echo -e "${RED}Error:${ENDCOLOR} Leshan server did not become ready"
-	exit 1
+	exit 2
 }
 
 # Start the Leshan EMS server jar in the background and export its PID as server_pid.
@@ -160,7 +160,7 @@ start_gadm_client_on_board() {
 
 	if [[ -z "${client_pid}" ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Failed to start ADM client on board"
-		exit 1
+		exit 2
 	fi
 
 	export client_pid
@@ -216,11 +216,11 @@ prepare_gadm_test_files() {
 	echo "Preparing GEISA ADM conformance test files"
 	mkdir -p "${topdir}/reports" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create test directory"
-		exit 1
+		exit 2
 	}
 	chmod +x "${topdir}/src/cukinia/cukinia" || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to set execute permission on cukinia"
-		exit 1
+		exit 2
 	}
 }
 
@@ -256,7 +256,7 @@ launch_gadm_tests() {
 
 	if ! ping -c 1 -W 2 "${board_ip}" >/dev/null 2>&1; then
 		echo -e "${RED}Error:${ENDCOLOR} Unable to reach board at ${board_ip}"
-		exit 1
+		exit 2
 	fi
 
 	# If host_ip is not provided, deduce it from the SSH session.
@@ -270,7 +270,7 @@ launch_gadm_tests() {
 		host_ip=$(deduce_host_ip_from_ssh)
 		if [[ -z "${host_ip}" ]]; then
 			echo -e "${RED}Error:${ENDCOLOR} Could not deduce host IP from SSH session. Please specify --host-ip explicitly."
-			exit 1
+			exit 2
 		fi
 		echo "Deduced host IP: ${host_ip}"
 	fi
@@ -285,7 +285,7 @@ launch_gadm_tests() {
 
 	if [[ ! -f "${ems_server_path}" ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} Leshan jar not found at ${ems_server_path}"
-		exit 1
+		exit 2
 	fi
 
 	echo ""
@@ -312,8 +312,14 @@ launch_gadm_tests() {
 	fi
 	adm_test_exit_code=$?
 
-	cleanup_gadm_ssh "${board_ip}" "${board_user}" "${board_password}" "${client_pid}" "${server_pid}"
-	cleanup_gadm_test_squashfs "${topdir}"
+	cleanup_gadm_ssh "${board_ip}" "${board_user}" "${board_password}" "${client_pid}" "${server_pid}" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up ADM processes"
+		exit 2
+	}
+	cleanup_gadm_test_squashfs "${topdir}" || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to clean up ADM test package"
+		exit 2
+	}
 
 	export adm_test_exit_code
 }

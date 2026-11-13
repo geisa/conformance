@@ -18,12 +18,19 @@ lee_test_exit_code=0
 adm_test_exit_code=0
 api_test_exit_code=0
 
-source "${TOPDIR}"/src/GEISA-LEE-tests/tests_configuration.conf
-source "${TOPDIR}"/src/GEISA-LEE-tests/user_configuration.conf
+check_test_exit_code() {
+	if [[ "$1" -ne 0 && "$1" -ne 1 ]]; then
+		echo -e "${RED}Error:${ENDCOLOR} Conformance test execution failed (status $1)"
+		exit 2
+	fi
+}
 
-source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh
-source "${TOPDIR}"/src/launch_gapi_conformance_tests.sh
-source "${TOPDIR}"/src/launch_gadm_conformance_tests.sh
+source "${TOPDIR}"/src/GEISA-LEE-tests/tests_configuration.conf || exit 2
+source "${TOPDIR}"/src/GEISA-LEE-tests/user_configuration.conf || exit 2
+
+source "${TOPDIR}"/src/launch_glee_conformance_tests_ssh.sh || exit 2
+source "${TOPDIR}"/src/launch_gapi_conformance_tests.sh || exit 2
+source "${TOPDIR}"/src/launch_gadm_conformance_tests.sh || exit 2
 
 # Print the details the specification relies on. The board script is copied
 # over scp and run with sh, so the board needs nothing but a shell.
@@ -49,7 +56,7 @@ trap '
 	else
 		echo "Clean them up with: ${ABSOLUTE_PATH} --ip ${BOARD_IP:-<board_ip>} --clean-up"
 	fi
-	exit 1
+	exit 2
 ' INT TERM HUP QUIT TSTP
 
 usage()
@@ -95,8 +102,13 @@ GADM test options (optional):
   --client-params <p>				Parameters to start the ADM client (use case: <client-path> <client-params>)
   --package-path <path>				Path to the ADM package to test (a squashfs file containing the client binary for the current implementation)
   --server-url <url>				EMS server URL (default: http://localhost:8080)
+
+Exit codes:
+  0  No test failures or execution errors reported
+  1  Test failure status (may also include Cukinia execution errors)
+  2  Execution error detected by the launcher
 EOF
-    exit 1
+    exit 2
 }
 
 while [[ "$#" -gt 0 ]]; do
@@ -229,14 +241,14 @@ done
 
 if [[ -n "${SSH_KEY_PATH:-}" && -z "${SSH_KEY_NAME:-}" ]]; then
 	echo -e "${RED}Error:${ENDCOLOR} --key-path requires --key-name"
-	exit 1
+	exit 2
 fi
 
 if [[ -n "${SSH_KEY_NAME:-}" ]]; then
 	ssh_key="${SSH_KEY_PATH:-${HOME}/.ssh}/${SSH_KEY_NAME}"
 	if [[ ! -f "${ssh_key}" ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} SSH key not found: ${ssh_key}"
-		exit 1
+		exit 2
 	fi
 	CONFORMANCE_SSH_ARGS="${CONFORMANCE_SSH_ARGS:-} -i ${ssh_key}"
 	CONFORMANCE_SCP_ARGS="${CONFORMANCE_SCP_ARGS:-} -i ${ssh_key}"
@@ -247,25 +259,25 @@ BOARD_USER=${BOARD_USER:-root}
 if [[ -n "${CLEAN_UP:-}" ]]; then
 	if [[ -z "${BOARD_IP:-}" ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} --clean-up requires --ip"
-		exit 1
+		exit 2
 	fi
 	if [[ -n ${NO_GLEE_TESTS} && -n ${NO_GADM_TESTS} && -n ${NO_GAPI_TESTS} ]]; then
 		echo -e "${RED}Error:${ENDCOLOR} At least one test suite must be selected for cleanup"
-		exit 1
+		exit 2
 	fi
 	cleanup_status=0
 	if [[ -z ${NO_GLEE_TESTS} ]]; then
 		( cleanup_glee_ssh \
-			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=1
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=2
 	fi
 	if [[ -z ${NO_GAPI_TESTS} ]]; then
 		( cleanup_api_ssh \
-			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=1
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" ) || cleanup_status=2
 	fi
 	if [[ -z ${NO_GADM_TESTS} ]]; then
 		( cleanup_gadm_ssh \
 			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "" "" \
-			"${ADM_CLIENT_PATH:-/usr/bin/adm_client}" ) || cleanup_status=1
+			"${ADM_CLIENT_PATH:-/usr/bin/adm_client}" ) || cleanup_status=2
 	fi
 	exit "${cleanup_status}"
 fi
@@ -286,7 +298,10 @@ fi
 
 if ! ${NO_REPORTS}; then
 	echo "Cleaning previous reports"
-	rm -rf "${TOPDIR}"/reports/*
+	rm -rf "${TOPDIR}"/reports/* || {
+		echo -e "${RED}Error:${ENDCOLOR} Failed to clean previous reports"
+		exit 2
+	}
 fi
 
 # Over serial, the serial launcher prints them after login.
@@ -296,15 +311,21 @@ fi
 
 if [[ -z ${NO_GLEE_TESTS} ]]; then
 	if [[ -n ${BOARD_IP} ]]; then
-		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
-		provision_glee_apps_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
+		connect_and_transfer_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" || exit 2
+		provision_glee_apps_with_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" || {
+			echo -e "${RED}Error:${ENDCOLOR} Failed to provision LEE applications"
+			exit 2
+		}
 		if ! ${NO_REPORTS}; then
 			launch_glee_tests_with_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		else
 			launch_glee_tests_without_report_ssh "${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}"
 		fi
 		cleanup_glee_ssh \
-			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" || lee_test_exit_code=1
+			"${BOARD_IP}" "${BOARD_USER}" "${BOARD_PASSWORD}" "${TOPDIR}" || {
+			echo -e "${RED}Error:${ENDCOLOR} Failed to clean up LEE tests"
+			exit 2
+		}
 	else
 		echo "Starting GEISA Conformance Tests on board via ${BOARD_SERIAL}"
 		if [[ -n ${APPLICATIONS} ]]; then
@@ -319,11 +340,8 @@ if [[ -z ${NO_GLEE_TESTS} ]]; then
 		fi
 		python3 "${TOPDIR}"/src/launch_glee_conformance_tests_serial.py "${args[@]}"
 		lee_test_exit_code=$?
-		if [[ ${lee_test_exit_code} -eq 255 ]]; then
-			echo -e "${RED}Error:${ENDCOLOR} Failed to launch tests on board via serial port"
-			exit "${lee_test_exit_code}"
-		fi
 	fi
+	check_test_exit_code "${lee_test_exit_code}"
 fi
 
 if [[ -z ${NO_GAPI_TESTS} ]]; then
@@ -340,6 +358,7 @@ if [[ -z ${NO_GAPI_TESTS} ]]; then
 	else
 		echo -e "${ORANGE}Warning:${ENDCOLOR} API test through serial is not supported yet."
 	fi
+	check_test_exit_code "${api_test_exit_code}"
 fi
 
 if [[ -z ${NO_GADM_TESTS} ]]; then
@@ -362,6 +381,7 @@ if [[ -z ${NO_GADM_TESTS} ]]; then
 	else
 		echo -e "${ORANGE}Warning:${ENDCOLOR} ADM test through serial is not supported yet."
 	fi
+	check_test_exit_code "${adm_test_exit_code}"
 fi
 
 if ! ${NO_REPORTS}; then
@@ -379,9 +399,9 @@ if ! ${NO_REPORTS}; then
 		--show_skip_reasons && \
 	mv "${TOPDIR}"/src/test-report-pdf/test-report.pdf "${TOPDIR}"/reports/geisa-conformance-report.pdf || {
 		echo -e "${RED}Error:${ENDCOLOR} Failed to create PDF report"
-		exit 1
+		exit 2
 	}
-	cd "${TOPDIR}" || exit 1
+	cd "${TOPDIR}" || exit 2
 fi
 
 if [[ "${lee_test_exit_code}" != 0 ||

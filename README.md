@@ -88,6 +88,15 @@ Optional options:
 * `--clean-up`: Clean artifacts for the selected test suites and exit. Use the `--no-<glee|gadm|gapi>-tests` options to exclude corresponding suites
 * `--help`: Display the help message
 
+Exit codes:
+
+* `0`: No test failures or execution errors were reported.
+* `1`: A test runner returned `1`, normally indicating failed tests.
+* `2`: The launcher detected an execution error, including invalid arguments, setup,
+  transport, reboot preparation, cleanup, or report generation errors.
+
+Detected launcher errors take precedence over failed tests.
+
 The LEE tests are configured in `src/GEISA-LEE-tests/user_configuration.conf`,
 which is read by both the host launcher and the target. Edit it before launching
 a run to select the applications under test and describe the container layout of
