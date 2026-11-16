@@ -49,7 +49,9 @@ The automatic test launcher has the following requirements:
   * For adm tests:
     - bsdmainutils (On Ubuntu, install with `sudo apt install bsdmainutils`)
     - curl (On Ubuntu, install with `sudo apt install curl`)
+    - default-jdk-headless (On Ubuntu, install with `sudo apt install default-jdk-headless`)
     - default-jre-headless (On Ubuntu, install with `sudo apt install default-jre-headless`)
+    - maven (On Ubuntu, install with `sudo apt install maven`)
     - wget (On Ubuntu, install with `sudo apt install wget`)
 
 Docker support is also available to launch the tests in a container. It requires:

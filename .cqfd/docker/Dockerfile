@@ -17,13 +17,16 @@ RUN set -x \
         clang-format \
         clang-tidy \
         curl \
+        default-jdk-headless \
         default-jre-headless \
         fuse-overlayfs \
+        git \
         iputils-ping \
         lrzsz \
         libmosquitto-dev \
         libnanopb-dev \
         openssh-server \
+        maven \
         podman \
         protobuf-compiler \
         pylint \
