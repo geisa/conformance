@@ -249,7 +249,7 @@ launch_gadm_tests() {
 	local client_start_params="${13:-}"
 	local with_report="${14:-false}"
 
-	local ems_server_path="${topdir}/src/leshan/leshan_ems_server.jar"
+	local ems_server_path="${topdir}/src/leshan/leshan-demo-server/target/leshan-demo-server-2.0.0-SNAPSHOT-jar-with-dependencies.jar"
 	local server_pid=""
 	local client_pid=""
 	adm_test_exit_code=0
@@ -284,8 +284,19 @@ launch_gadm_tests() {
 	fi
 
 	if [[ ! -f "${ems_server_path}" ]]; then
-		echo -e "${RED}Error:${ENDCOLOR} Leshan jar not found at ${ems_server_path}"
-		exit 2
+		echo "Building Leshan EMS server jar..."
+		cd "${topdir}/src/leshan" || {
+			echo -e "${RED}Error:${ENDCOLOR} Failed to change directory to ${topdir}/src/leshan"
+			exit 2
+		}
+		mvn clean install -pl leshan-demo-server -am -DskipTests || {
+			echo -e "${RED}Error:${ENDCOLOR} Failed to build Leshan EMS server jar"
+			exit 2
+		}
+		cd - >/dev/null || {
+			echo -e "${RED}Error:${ENDCOLOR} Failed to return to previous directory"
+			exit 2
+		}
 	fi
 
 	echo ""

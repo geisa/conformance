@@ -15,3 +15,6 @@
 [submodule "src/GEISA-LEE-tests/src/community"]
 	path = src/GEISA-LEE-tests/src/community
 	url = https://github.com/geisa/community.git
+[submodule "src/leshan"]
+	path = src/leshan
+	url = https://github.com/eclipse-leshan/leshan.git
