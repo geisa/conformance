@@ -136,15 +136,15 @@ A typical GEISA development layout is:
 ```text
 ~/work/GEISA/
 ├── conformance/
-├── specification/
-└── schemas/
+└── specification/
+    └── schemas/
 ```
 
-`specification` is currently required by `extract-rst`. `schemas` is not
-required by `extract-rst` today, but later protobuf and JSON Schema extraction
-will use it. The repositories do not need to be peers when `--source` names a
-valid specification local checkout. The examples use peer checkouts as my
-preferred 'normal' GEISA development layout.
+`specification` is required by `extract-rst`. The schemas directory is
+`specification/schemas/`; it is not required by `extract-rst` today,
+but planned protobuf and JSON Schema extraction may use it. The diagram shows
+one common local layout. `--source` can point to a valid specification
+checkout in another layout.
 
 - `requirements/` contains reviewed project data and release baselines
 - `tools/conformance-map/` contains the implementation and committed docs
@@ -162,10 +162,10 @@ source tools/conformance-map/.venv/bin/activate
 
 ## Running the extractor
 
-Make sure you've run setup-venv.sh and activated it as above.  The examples
-assume that `conformance` and `specification` are peer checkouts under
-`~/work/GEISA/`. Change `--source` as needed for your respective layout if
-needed.
+Make sure you've run setup-venv.sh and activated it as above. The examples use
+the layout shown above, with `conformance` beside `specification` and schemas
+nested inside `specification/schemas/`. If you use another layout, adjust
+`--source` to your specification checkout.
 
 ```sh
 geisa-conformance-map extract-rst \
