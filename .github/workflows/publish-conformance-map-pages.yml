@@ -20,14 +20,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     if: github.ref == 'refs/heads/main'
-    name: Generate and publish conformance-map review reports
+    name: Generate conformance-map review reports
     runs-on: ubuntu-latest
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Check out conformance
@@ -196,6 +192,16 @@ jobs:
         with:
           path: pages
 
+  deploy:
+    needs: build
+    name: Deploy conformance-map review reports
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
